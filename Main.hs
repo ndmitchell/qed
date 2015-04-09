@@ -7,6 +7,7 @@ import Sugar
 
 
 main = do
+    reset
     ctors "[]" [("[]",0),(":",2)]
     defineP "." "\\f g x -> f (g x)"
     defineP "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
@@ -16,7 +17,6 @@ main = do
     goalP "\\x -> [] ++ x" "\\x -> x"
     unfold "++"
     simples
-    eq
 
     goalP "\\x -> x ++ []" "\\x -> x"
     unfold "++"
@@ -24,11 +24,10 @@ main = do
     rhs $ split "[]"
     simples
     peelCase
-    eq
     peelCtor
-    eq
+    simples
     induct
-    eq
+    simples
 
     goalP "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
     unfold "++" >> simples
@@ -36,14 +35,10 @@ main = do
     rhs $ unfold "++" >> simples
     rhs $ unfold "++" >> simples >> simples
     peelCase
-    peelCase
-    eq
-    eq
     peelCtor
-    eq
     relam [1,4,5,2,3]
     induct
-    eq
+    simples
 
     goalP "map id" "id"
     unfold "map"
@@ -53,10 +48,9 @@ main = do
     simples
     peelCase
     peelCtor
-    peelCtor
-    unfold "id" >> simples >> eq
+    unfold "id" >> simples
     induct
-    unfold "id" >> simples >> eq
+    unfold "id" >> simples
 
     goalP "\\f g -> map f . map g" "\\f g -> map (f . g)"
     unfold "." >> simples
@@ -66,7 +60,5 @@ main = do
     rhs $ unfold "." >> simples
     simples
     peelCase
-    eq
     peelCtor
-    eq
     dump
