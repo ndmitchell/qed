@@ -64,12 +64,6 @@ define a b = withState $ \s -> s{proof = (Var (V a) :=: b) : proof s}
 goal :: Exp -> Exp -> IO ()
 goal a b = withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, False)] : goals s}
 
-defineP :: String -> String -> IO ()
-defineP a b = define a (parse b)
-
-goalP :: String -> String -> IO ()
-goalP a b = goal (parse a) (parse b)
-
 ctors :: String -> [(String,Int)] -> IO ()
 ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
 
@@ -83,9 +77,6 @@ ask :: Exp -> IO Equal
 ask x = do
     s <- readIORef state
     return $ head $ [a :=: b | a :=: b <- proof s, a == x] ++ error ("No proof found, " ++ show x)
-
-askP :: String -> IO Equal
-askP = ask . parse
 
 apply :: Equal -> IO ()
 apply (a :=: b) = withSubgoal $ \(t,reduced) ->

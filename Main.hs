@@ -3,6 +3,7 @@
 module Main(main) where
 
 import Core
+import Sugar
 
 
 main = do
