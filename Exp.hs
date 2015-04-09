@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards, TupleSections, ViewPatterns #-}
 
+-- | Module for defining and manipulating expressions.
 module Exp(
     Var(..), Con(..), Exp(..), Pat(..),
     fromApps, fromLams, fromLets, lets, lams, apps,

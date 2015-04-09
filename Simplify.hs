@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
 
+-- | Simplification transformations on expression.
 module Simplify(simplifys, simplify, etas) where
 
 import Util hiding (fresh)

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards, ViewPatterns #-}
 
+-- | Module for operating on haskell-src-exts expressions.
 module HSE(deflate, inflate, noCAF, sl) where
 
 import Data.Data

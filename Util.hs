@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
+-- | Generic utilities.
 module Util(module Util, module Safe, trace) where
 
 import System.Info
