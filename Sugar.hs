@@ -8,7 +8,7 @@ import Exp
 defineP :: String -> String -> IO ()
 defineP a b = define a (parse b)
 
-goalP :: String -> String -> IO ()
+goalP :: String -> String -> IO Equal
 goalP a b = goal (parse a) (parse b)
 
 askP :: String -> IO Equal

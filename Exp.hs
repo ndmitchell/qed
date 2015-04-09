@@ -6,7 +6,7 @@ module Exp(
     fromApps, fromLams, fromLets, lets, lams, apps,
     caseCon,
     prettys, pretty,
-    vars, varsP, free, subst, relabel, fresh,
+    vars, varsP, free, subst, unsubst, relabel, fresh,
     eval, equivalent,
     fromHSE, toHSE, parse
     ) where
@@ -105,6 +105,21 @@ free (Lam x y) = delete x $ free y
 free (Case x y) = nub $ free x ++ concat [free b \\ varsP a | (a,b) <- y]
 free (Let a b y) = nub $ free b ++ delete a (free y)
 free _ = []
+
+-- first one has the free variables.
+--
+-- > subst (fromJust $ unsubst a b) a == b
+unsubst :: Exp -> Exp -> Maybe [(Var,Exp)]
+unsubst = f
+    where
+        f x y | x == y = Just []
+        f (Var x) y = Just [(x,y)]
+        f (App x1 x2) (App y1 y2) = f x1 y1 `g` f x2 y2
+        f (Lam x1 x2) (Lam y1 y2) = undefined
+        f _ _ = Nothing
+
+        g = undefined
+
 
 subst :: [(Var,Exp)] -> Exp -> Exp
 subst [] x = x

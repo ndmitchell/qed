@@ -53,8 +53,10 @@ instance Show State where
 -- * Reorder or drop lambda parameters equally (positional quantifiers)
 -- * Induction, direct textually equivalent equality substitution
 
-addGoal :: Exp -> Exp -> IO ()
-addGoal a b = withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, False)] : goals s}
+addGoal :: Exp -> Exp -> IO Equal
+addGoal a b = do
+    withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, False)] : goals s}
+    return $ a :=: b
 
 
 -- | Make goal at position i the first goal
@@ -126,7 +128,12 @@ splitCon = withSubgoal $ \((fromLams -> (as, fromApps -> (Con a,a2))) :=: (fromL
 
 -- technically not necessary, just cleans up quantifiers
 removeLam :: IO ()
-removeLam = undefined
+removeLam = withSubgoal $ \((fromLams -> (as, a)) :=: (fromLams -> (bs, b)), reduced) ->
+    let rem = f as a `intersect` f bs b
+    in if null rem then error "removeLam, none are redundant" else [(g rem as a :=: g rem bs b, reduced)]
+    where
+        f as a = [i | let fr = free a, (i,x) <- zip [0..] as, x `notElem` fr]
+        g rem as a = lams [x | (i,x) <- zip [0..] as, i `notElem` rem] a
 
 
 
@@ -134,6 +141,9 @@ removeLam = undefined
 {-# NOINLINE state #-}
 state :: IORef State
 state = unsafePerformIO $ newIORef $ State [] [] [] []
+
+getState :: IO State
+getState = readIORef state
 
 withState :: (State -> State) -> IO ()
 withState f = modifyIORef state (promote . f)
@@ -180,6 +190,9 @@ applyEx i (a :=: b) = withSubgoal $ \(t,reduced) ->
 unfold :: String -> IO ()
 unfold x = do p <- ask $ Var $ V x; apply p
 
+refold :: String -> IO ()
+refold x = do p <- ask $ Var $ V x; apply $ sym p
+
 unfoldEx :: Int -> String -> IO ()
 unfoldEx i x = do p <- ask $ Var $ V x; applyEx i p
 
@@ -191,7 +204,9 @@ rhs act = swaps >> act >> swaps
 
 
 simples :: IO ()
-simples = withSubgoal $ \((a :=: b), reduced) -> [((simplify a :=: simplify b), reduced)]
+simples = do
+    State{goals=Goal _ ((a :=: b, _):_):_} <- getState
+    rewriteExp (simplify a :=: simplify b)
 
 split :: String -> IO ()
 split typ = do
@@ -200,12 +215,6 @@ split typ = do
     withSubgoal $ \(a :=: b, reduced) ->
         case [ctx $ Case (Var var) alts | let bad = free a, (Var var, ctx) <- contextsBi a, var `notElem` bad] of
             a:_ -> [(a :=: b, reduced)]
-
-peelCase :: IO ()
-peelCase = splitCase
-
-peelCtor :: IO ()
-peelCtor = splitCon
 
 
 eq :: IO ()
