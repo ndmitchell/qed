@@ -5,12 +5,9 @@ module Util(module Util, module Safe, trace) where
 
 import Data.List
 import Control.Monad.State
-import Data.IORef
 import Debug.Trace
 import System.IO.Unsafe
-import Data.Time.Clock.POSIX(getPOSIXTime)
 import Safe
-import Numeric
 import System.Environment
 import Data.Tuple.Extra
 
@@ -24,20 +21,6 @@ subset x y = null $ x \\ y
 fixEq f x = if x == x2 then x else fixEq f x2
     where x2 = f x
 
-
-getTime :: IO Double
-getTime = (fromRational . toRational) `fmap` getPOSIXTime
-
-timer :: IO () -> IO ()
-timer act = do
-    start <- getTime
-    act
-    end <- getTime
-    putStrLn $ showDP 2 (end - start) ++ "s"
-
-showDP :: Int -> Double -> String
-showDP n x = a ++ "." ++ b ++ replicate (n - length b) '0'
-    where (a,b) = second (drop 1) $ break (== '.') $ showFFloat (Just n) x ""
 
 delFst :: Eq a => a -> [(a,b)] -> [(a,b)]
 delFst x = filter ((/=) x . fst)
@@ -87,24 +70,6 @@ runFresh :: String -> Fresh a -> a
 runFresh v x = evalState x $ SFresh $ freshVars v
 
 
-
-{-# NOINLINE time #-}
-time :: Int -> Bool
-time i = unsafePerformIO $ do
-    n <- readIORef timeRef
-    writeIORef timeRef (n+1)
-    return $ i == n
-
-{-# NOINLINE timeRef #-}
-timeRef :: IORef Int
-timeRef = unsafePerformIO $ newIORef 0
-
-
-{-# NOINLINE resetTime #-}
-resetTime :: a -> a
-resetTime x = unsafePerformIO $ do
-    writeIORef timeRef 0
-    return x
 
 fast = "--fast" `elem` unsafePerformIO getArgs
 
