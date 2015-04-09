@@ -13,9 +13,10 @@ import Data.Tuple.Extra
 
 
 data State = State
-    {types :: [(String, [(Con,Int)])] -- these should induce proofs
+    {types :: [(String, [(Con,Int)])] -- these should go away
+    ,defined :: [String] -- stop things being redefined
     ,proof :: [Equal]
-    ,goals :: [Goal]
+    ,goals :: [Goal] -- none are literally equal
     }
 
 data Equal = Exp :=: Exp deriving (Data,Typeable)
@@ -45,7 +46,7 @@ instance Show State where
 
 {-# NOINLINE state #-}
 state :: IORef State
-state = unsafePerformIO $ newIORef $ State [] [] []
+state = unsafePerformIO $ newIORef $ State [] [] [] []
 
 withState :: (State -> State) -> IO ()
 withState = modifyIORef state
