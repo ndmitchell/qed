@@ -3,11 +3,9 @@
 import Exp
 import System.IO.Unsafe
 import Data.IORef
-import qualified Language.Haskell.Exts as H
 import Data.Generics.Uniplate.Data
 import Data.List
 import Data.Data
-import HSE
 import Simplify
 import Data.Tuple.Extra
 
