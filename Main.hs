@@ -21,7 +21,7 @@ main = do
     goalP "\\x -> x ++ []" "\\x -> x"
     unfold "++"
     simples
-    splitRhs "[]"
+    rhs $ split "[]"
     simples
     peelCase
     eq
@@ -33,8 +33,8 @@ main = do
     goalP "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
     unfold "++" >> simples
     unfold "++" >> simples
-    unfoldRhs "++" >> simples
-    unfoldRhs "++" >> simples >> simples
+    rhs $ unfold "++" >> simples
+    rhs $ unfold "++" >> simples >> simples
     peelCase
     peelCase
     eq
@@ -48,8 +48,8 @@ main = do
     goalP "map id" "id"
     unfold "map"
     simples
-    unfoldRhs "id"
-    splitRhs "[]"
+    rhs $ unfold "id"
+    rhs $ split "[]"
     simples
     peelCase
     peelCtor
@@ -62,8 +62,8 @@ main = do
     unfold "." >> simples
     unfold "map"
     unfoldEx 1 "map" >> simples
-    unfoldRhs "map" >> simples
-    unfoldRhs "." >> simples
+    rhs $ unfold "map" >> simples
+    rhs $ unfold "." >> simples
     simples
     peelCase
     eq

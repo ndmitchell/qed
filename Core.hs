@@ -18,6 +18,11 @@ data State = State
     ,goals :: [Goal]
     }
 
+data Equal = Exp :=: Exp deriving (Data,Typeable)
+
+data Goal = Goal Equal [(Equal, Bool)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
+
+
 -- trusted Core operations:
 -- * Reorder goals
 -- * Apply transformations to an expression
@@ -37,10 +42,6 @@ instance Show State where
              pretty a ++ " = " ++ pretty b | (a :=: b, reduced) <- xs]
             | Goal (a :=: b) xs <- goals]
 
-
-data Equal = Exp :=: Exp deriving (Data,Typeable)
-
-data Goal = Goal Equal [(Equal, Bool)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
 
 {-# NOINLINE state #-}
 state :: IORef State
@@ -79,12 +80,7 @@ ask x = do
     return $ head $ [a :=: b | a :=: b <- proof s, a == x] ++ error ("No proof found, " ++ show x)
 
 apply :: Equal -> IO ()
-apply (a :=: b) = withSubgoal $ \(t,reduced) ->
-    case [ctx b | (val,ctx) <- contextsBi t, relabel val == relabel a] of
-        new:_ -> [(new,reduced)]
-        _ -> error $ "Trying to apply:\n" ++ f (a :=: b) ++ "\nTo:\n" ++ f t
-    where
-        f (a :=: b) = pretty a ++ " = " ++ pretty b
+apply = applyEx 0
 
 applyEx :: Int -> Equal -> IO ()
 applyEx i (a :=: b) = withSubgoal $ \(t,reduced) ->
@@ -100,32 +96,23 @@ unfold x = do p <- ask $ Var $ V x; apply p
 unfoldEx :: Int -> String -> IO ()
 unfoldEx i x = do p <- ask $ Var $ V x; applyEx i p
 
-applyRhs :: Equal -> IO ()
-applyRhs (a :=: b) = withSubgoal $ \(t,reduced) ->
-    case [ctx b | (val,ctx) <- contextsBi $ swp t, relabel val == relabel a] of
-        new:_ -> [(swp new,reduced)]
-        _ -> error $ "Trying to apply:\n" ++ f (a :=: b) ++ "\nTo:\n" ++ f t
-    where
-        f (a :=: b) = pretty a ++ " = " ++ pretty b
-        swp (a :=: b) = (b :=: a)
+rhs :: IO () -> IO ()
+rhs act = swaps >> act >> swaps
+    where swaps = withState $ \s -> s{goals = map f $ goals s}
+          f (Goal a b) = Goal (g a) (map (first g) b)
+          g (a :=: b) = b :=: a
 
-unfoldRhs :: String -> IO ()
-unfoldRhs x = do p <- ask $ Var $ V x; applyRhs p
-
-
-split :: String -> String -> IO ()
-split = error "split"
 
 simples :: IO ()
 simples = withSubgoal $ \((a :=: b), reduced) -> [((simplify a :=: simplify b), reduced)]
 
-splitRhs :: String -> IO ()
-splitRhs typ = do
+split :: String -> IO ()
+split typ = do
     s <- readIORef state
     let alts | Just ctrs <- lookup typ $ types s = [(PCon a vs, Con a `apps` map Var vs) | (a,b) <- ctrs, let vs = take b $ fresh []]
     withSubgoal $ \(a :=: b, reduced) ->
-        case [ctx $ Case (Var var) alts | let bad = free b, (Var var, ctx) <- contextsBi b, var `notElem` bad] of
-            b:_ -> [(a :=: b, reduced)]
+        case [ctx $ Case (Var var) alts | let bad = free a, (Var var, ctx) <- contextsBi a, var `notElem` bad] of
+            a:_ -> [(a :=: b, reduced)]
 
 peelCase :: IO ()
 peelCase = withSubgoal $ \((fromLams -> (as,Case a a2)) :=: (fromLams -> (bs,Case b b2)), reduced) ->
