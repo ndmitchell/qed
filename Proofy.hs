@@ -13,10 +13,20 @@ import Data.Tuple.Extra
 
 
 data State = State
-    {types :: [(String, [(Con,Int)])]
+    {types :: [(String, [(Con,Int)])] -- these should induce proofs
     ,proof :: [Equal]
     ,goals :: [Goal]
     }
+
+-- trusted Core operations:
+-- * Reorder goals
+-- * Apply transformations to an expression
+--   * Based on proof, direct textually equivalent equality substitution
+--   * Based on eval equivalence
+-- * Split based on Case, Ctor (induces a reduction)
+-- * Reorder or drop lambda parameters equally (positional quantifiers)
+-- * Induction, direct textually equivalent equality substitution
+
 
 instance Show State where
     show State{..} = unlines $
