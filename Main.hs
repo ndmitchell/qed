@@ -3,9 +3,10 @@
 module Main(main) where
 
 import Proofy
+import Control.Exception
 
 
-main = do
+main = flip onException dump $ do
     reset
     define "data Nil_ a = Nil_ | Cons_ a [a]"
     define "(.) f g x = f (g x)"
@@ -19,8 +20,8 @@ main = do
 
     goal "\\x -> x ++ []" "\\x -> x"
     unfold "++"
-    simples
     rhs $ split "[]"
+    simples
     splitCase
     splitCon
     simples
@@ -52,7 +53,7 @@ main = do
 
     g <- goal "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
     unfold "map"
-    unfoldEx 1 "map" >> simples
+    at 1 $ unfold "map" >> simples
     rhs $ unfold "map" >> simples
     simples
     splitCase
@@ -70,7 +71,7 @@ main = do
     unfold "."
     simples
     unfold "map"
-    unfoldEx 1 "map"
+    at 1 $ unfold "map"
     rhs $ unfold "map"
     simples >> simples
     splitCase
@@ -81,3 +82,4 @@ main = do
     rhs $ unfold "map"
     simples >> simples
     dump
+    putStrLn "QED"

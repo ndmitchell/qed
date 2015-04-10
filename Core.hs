@@ -11,6 +11,8 @@ module Core(
     ) where
 
 import Control.Applicative
+import Control.Exception
+import Control.DeepSeq
 import Exp
 import Util
 import System.IO.Unsafe
@@ -19,19 +21,20 @@ import Data.Generics.Uniplate.Data
 import Data.List.Extra
 import Data.Data
 
-data Reduced = Reduced | Unreduced deriving Eq
+data Reduced = Reduced | Unreduced deriving (Show,Eq)
 
-data Proved = Defined | Proved deriving Eq
+data Proved = Defined | Proved deriving (Show,Eq)
 
 data State = State
     {types :: [(String, [(Con,Int)])] -- these should go away
     ,proof :: [(Equal, Proved)]
     ,goals :: [Goal] -- none are literally equal
-    }
+    } deriving Show
 
 data Equal = Exp :=: Exp deriving (Data,Typeable,Show,Eq)
 
 data Goal = Goal Equal [(Equal, Reduced)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
+            deriving Show
 
 sym :: Equal -> Equal
 sym (a :=: b) = b :=: a
@@ -171,7 +174,11 @@ getGoals = goals <$> getState
 getProofs = map fst . proof <$> getState
 
 withState :: (State -> State) -> IO ()
-withState f = modifyIORef state (promote . f)
+withState f = do
+    s <- readIORef state
+    s <- return $ promote $ f s
+    evaluate $ rnf $ show s
+    writeIORef state s
 
 -- Nothing indicates you proved it
 withGoal :: (Goal -> Goal) -> IO ()
