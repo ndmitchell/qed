@@ -2,8 +2,8 @@
 
 module Proofy(
     run, dump, reset,
-    define, goal, auto, proof,
-    unfold, refold, simples, induct, splitCase, splitCon, removeLam,
+    define, goal, auto, proof, unauto,
+    unfold, refold, simples, induct, splitCase, splitCon, splitVar, removeLam, equal, unlet,
     apply, rhs, at, ats, unify,
     ) where
 
@@ -11,7 +11,7 @@ module Proofy(
 import Core
 import Exp
 import HSE
-import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case,App)
+import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case,App,Let)
 import Data.Generics.Uniplate.Data
 import Control.Exception.Extra
 import Control.Applicative
@@ -42,6 +42,14 @@ run act = flip onException dump $ do
 
 auto :: IO () -> IO ()
 auto x = modifyIORef state2 $ \s -> s{autos = autos s ++ [x]}
+
+unauto :: IO ()
+unauto = modifyIORef state2 $ \s -> s{autos = []}
+
+runAutos :: IO ()
+runAutos = do
+    State2{..} <- readIORef state2
+    whileM $ any isRight <$> mapM try_ autos
 
 
 {-# NOINLINE state2 #-}
@@ -128,7 +136,7 @@ apply prf@((fromLams -> (as,a)) :=: b) = do
          | (val,ctx) <- contextsBi $ swp t, Just sub <- [unifier as a val], applyUnify || all (isVar . snd) sub] of
         new | length new > fromJust applyAt -> new !! fromJust applyAt
         _ -> error $ "Trying to apply:\n" ++ pretty (a :=: b) ++ "\nTo:\n" ++ pretty t
-    whileM $ any isRight <$> mapM try_ autos
+    runAutos
 
 
 isVar Var{} = True; isVar _ = False
@@ -168,3 +176,14 @@ induct :: IO ()
 induct = do
     Goal t _:_ <- getGoals
     apply t
+
+equal :: IO ()
+equal = do
+    Goal t ((a :=: b, _):_) : _ <- getGoals
+    rewriteExp $ b :=: b
+
+unlet :: IO ()
+unlet = do
+    Goal _ ((p, _):_) : _ <- getGoals
+    rewriteExp $ head $ [ctx $ subst [(a,b)] c | (Let a b c, ctx) <- contextsBi p]
+    runAutos

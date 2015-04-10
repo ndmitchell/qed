@@ -6,7 +6,7 @@ module Core(
     resetState, getState, getProofs, getGoals,
     defineFunction, defineData, addGoal,
     firstGoal, firstSubgoal, rewriteExp, applyProof,
-    splitCase, splitCon, removeLam
+    splitCase, splitCon, splitVar, removeLam
     ) where
 
 import Control.Applicative
@@ -111,7 +111,7 @@ defineData ctrs = do
 -- using the proof (which must be True, or inductively True) apply to produce this subgoal
 applyProof :: Equal -> Equal -> IO ()
 applyProof given@(from :=: to) new = withState $ \s ->
-    if not $ valid s given then error $ "applyProof called with an invalid proof, " ++ show given else
+    if not $ valid s given then error $ "applyProof called with an invalid proof, " ++ pretty given else
         case goals s of
             Goal r1 ((old, reduced):r2):r3
                 | new `elem` [ctx to | (val,ctx) <- contextsBi old, val == from]
@@ -135,13 +135,14 @@ rewriteExp (a :=: b) = withSubgoal $ \(o@(x :=: y), reduced) ->
 splitCase :: IO ()
 splitCase = withSubgoal $ \(o@(a :=: b), reduced) ->
     if pattern a /= pattern b then invalid $ "splitCase on different patterns, " ++ pretty o
-    else map (,reduced) $ zipWith (:=:) (split a) (split b)
+    else let (vs,v,_) = pattern a
+         in map (, if v `elem` map Var vs then Reduced else reduced) $ zipWith (:=:) (split a) (split b)
     where
         -- distinguishes the salient features
-        pattern (fromLams . relabel -> (vs, Case _ alts)) = (vs, map (patCon . fst) alts)
+        pattern (fromLams . relabel -> (vs, Case on alts)) = (vs, on, map (patCon . fst) alts)
         pattern x = invalid $ "splitCase not on a case, " ++ pretty x
 
-        split (fromLams -> (vs, Case on alts)) = lams vs on : [lams (vs ++ patVars p) x | (p,x) <- alts]
+        split (fromLams -> (vs, Case on alts)) = [lams (vs ++ patVars p) x | (p,x) <- alts]
 
 
 splitCon :: IO ()
@@ -155,14 +156,27 @@ splitCon = withSubgoal $ \(o@(a :=: b), _) ->
         split (fromLams -> (vs, fromApps -> (Con ctr, args))) = map (lams vs) args
 
 
--- technically not necessary, just cleans up quantifiers
+splitVar :: IO ()
+splitVar = withSubgoal $ \(o@(a :=: b), _) ->
+    if pattern a /= pattern b then invalid $ "splitVar on different patterns, " ++ pretty o
+    else map (,Reduced) $ zipWith (:=:) (split a) (split b)
+    where
+        pattern (fromLams . relabel -> (vs, fromApps -> (Var v, args))) | v `elem` vs = (vs, v, length args)
+        pattern x = invalid $ "splitVar not a free var, " ++ pretty x
+
+        split (fromLams -> (vs, fromApps -> (Var v, args))) | v `elem` vs = map (lams vs) args
+
+
 removeLam :: IO ()
-removeLam = withSubgoal $ \((fromLams -> (as, a)) :=: (fromLams -> (bs, b)), reduced) ->
+removeLam = withSubgoal $ \(old@((fromLams -> (as, a)) :=: (fromLams -> (bs, b))), reduced) ->
     let rem = f as a `intersect` f bs b
-    in if null rem then invalid "removeLam, none are redundant" else [(g rem as a :=: g rem bs b, reduced)]
+        new = g rem as a :=: g rem bs b
+    in if new == old then invalid "removeLam, none are redundant" else [(new, reduced)]
     where
         f as a = [i | let fr = free a, (i,x) <- zip [0..] as, x `notElem` fr]
-        g rem as a = lams [x | (i,x) <- zip [0..] as, i `notElem` rem] a
+        g rem as a = h [x | (i,x) <- zip [0..] as, i `notElem` rem] a
+        h (unsnoc -> Just (vs,v)) (App x v2) | vs /= [], Var v == v2, v `notElem` free x = h vs x
+        h a b = lams a b
 
 
 {-# NOINLINE state #-}
