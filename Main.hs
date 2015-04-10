@@ -52,4 +52,6 @@ main = run $ do
     unfold "map"
     unfold "map"
     rhs $ unfold "map"
-    apply g
+    unify $ refold "."
+    induct
+    unfold "."
