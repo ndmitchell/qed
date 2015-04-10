@@ -4,22 +4,48 @@ module Proofy(module Proofy, module Core) where
 
 import Core
 import Exp
+import HSE
+import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case)
 import Data.Generics.Uniplate.Data
 import Data.List.Extra
 import Simplify
+import System.IO.Unsafe
+import Data.IORef
+import Data.Maybe
 import Data.Tuple.Extra
 
-reset :: IO ()
-reset = resetState
+data State2 = State2
+    {names :: [(String, Equal)]
+    ,applyRhs :: Bool
+    ,applyInd :: Int
+    }
 
-define :: String -> String -> IO Equal
-define a b = defineFunction a (parse b)
+{-# NOINLINE state2 #-}
+state2 :: IORef State2
+state2 = unsafePerformIO $ newIORef $ State2 [] False 0
+
+reset :: IO ()
+reset = do
+    resetState
+    writeIORef state2 $ State2 [] False 0
+
+define :: String -> IO Equal
+define x = case deflate $ fromParseResult $ parseDecl x of
+    DataDecl _ _ _ name _ ctrs [] -> do
+        let f (fromName -> x) = fromMaybe x $ lookup x [("Nil_","[]"),("Cons_",":")]
+        ctors (f name) [(f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs]
+        return undefined
+    PatBind _ (PVar x) (UnGuardedRhs bod) (BDecls []) -> do
+        eq <- defineFunction (fromName x) (fromExp bod)
+        named (fromName x) eq
+        return eq
+    x -> error $ "Define not handled, " ++ show x
+
+named :: String -> Equal -> IO Equal
+named a b = do modifyIORef state2 $ \s -> s{names = (a,b) : names s}; return b
 
 goal :: String -> String -> IO Equal
 goal a b = addGoal (parse a) (parse b)
-
-askP :: String -> IO Equal
-askP = ask . parse
 
 ctors :: String -> [(String,Int)] -> IO ()
 ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
@@ -30,10 +56,10 @@ dump = do
     putStrLn $ pretty s
 
 
-ask :: Exp -> IO Equal
+ask :: String -> IO Equal
 ask x = do
-    s <- getState
-    return $ head $ [a :=: b | (a :=: b,_) <- proof s, a == x] ++ error ("No proof found, " ++ show x)
+    s <- readIORef state2
+    return $ fromMaybe (error $ "Proof not found named " ++ x) $ lookup x $ names s
 
 apply :: Equal -> IO ()
 apply = applyEx 0
@@ -47,13 +73,13 @@ applyEx i (a :=: b) = withSubgoal $ \(t,reduced) ->
         f (a :=: b) = pretty a ++ " = " ++ pretty b
 
 unfold :: String -> IO ()
-unfold x = do p <- ask $ Var $ V x; apply p
+unfold x = apply =<< ask x
 
 refold :: String -> IO ()
-refold x = do p <- ask $ Var $ V x; apply $ sym p
+refold x = apply . sym =<< ask x
 
 unfoldEx :: Int -> String -> IO ()
-unfoldEx i x = do p <- ask $ Var $ V x; applyEx i p
+unfoldEx i x = do p <- ask x; applyEx i p
 
 rhs :: IO () -> IO ()
 rhs act = swaps >> act >> swaps
@@ -64,7 +90,7 @@ rhs act = swaps >> act >> swaps
 
 simples :: IO ()
 simples = do
-    State{goals=Goal _ ((a :=: b, _):_):_} <- getState
+    Goal _ ((a :=: b, _):_):_ <- getGoals
     rewriteExp (simplify a :=: simplify b)
 
 split :: String -> IO ()
@@ -76,12 +102,9 @@ split typ = do
             a:_ -> [(a :=: b, reduced)]
 
 
-eq :: IO ()
-eq = withSubgoal $ \(a :=: b, _) -> if eval a /= eval b then error "not equivalent" else []
-
 induct :: IO ()
 induct = do
-    State{goals=Goal t _:_} <- getState
+    Goal t _:_ <- getGoals
     apply t
 
 relam :: [Int] -> IO ()

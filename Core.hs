@@ -3,13 +3,14 @@
 module Core(
     Equal(..), sym,
     Goal(..), State(..),
-    resetState, getState,
+    resetState, getState, getProofs, getGoals,
     defineFunction, defineData, addGoal,
     firstGoal, firstSubgoal, rewriteExp, applyProof,
     splitCase, splitCon, removeLam,
     withState, withSubgoal,
     ) where
 
+import Control.Applicative
 import Exp
 import Util
 import System.IO.Unsafe
@@ -165,6 +166,9 @@ state = unsafePerformIO $ newIORef $ State [] [] []
 
 getState :: IO State
 getState = readIORef state
+
+getGoals = goals <$> getState
+getProofs = map fst . proof <$> getState
 
 withState :: (State -> State) -> IO ()
 withState f = modifyIORef state (promote . f)

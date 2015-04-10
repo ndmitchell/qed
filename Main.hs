@@ -6,12 +6,12 @@ import Proofy
 
 
 main = do
-    resetState
-    ctors "[]" [("[]",0),(":",2)]
-    define "." "\\f g x -> f (g x)"
-    define "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
-    define "id" "\\x -> x"
-    define "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
+    reset
+    define "data Nil_ a = Nil_ | Cons_ a [a]"
+    define "(.) f g x = f (g x)"
+    define "(++) x y = case x of [] -> y; a:b -> a : (b ++ y)"
+    define "id x = x"
+    define "map f xs = case xs of [] -> []; x:xs -> f x : map f xs"
 
     goal "\\x -> [] ++ x" "\\x -> x"
     unfold "++"

@@ -9,7 +9,7 @@ module Exp(
     prettys, pretty,
     vars, varsP, free, subst, unsubst, relabel, fresh,
     eval, equivalent,
-    fromHSE, toHSE, parse
+    fromHSE, fromExp, fromName, toHSE, parse
     ) where
 
 
