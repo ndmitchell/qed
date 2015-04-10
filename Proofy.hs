@@ -2,9 +2,9 @@
 
 module Proofy(
     run, dump, reset,
-    define, goal, auto,
+    define, goal, auto, proof,
     unfold, refold, simples, induct, splitCase, splitCon, removeLam,
-    apply, rhs, at, ats, unify
+    apply, rhs, at, ats, unify,
     ) where
 
 
@@ -32,12 +32,13 @@ data State2 = State2
     ,autos :: [IO ()]
     }
 
-run :: IO () -> IO ()
+run :: IO a -> IO ()
 run act = flip onException dump $ do
     reset
     act
     dump
-    putStrLn "QED"
+    g <- getGoals
+    when (null g) $ putStrLn "QED"
 
 auto :: IO () -> IO ()
 auto x = modifyIORef state2 $ \s -> s{autos = autos s ++ [x]}
@@ -70,6 +71,18 @@ named a b = do modifyIORef state2 $ \s -> s{names = (a,b) : names s}; return b
 
 goal :: String -> String -> IO Equal
 goal a b = addGoal (parse a) (parse b)
+
+proof :: String -> String -> IO () -> IO Equal
+proof (parse -> a) (parse -> b) c = do
+    done <- getProofs
+    let prf = a :=: b
+    when (prf `notElem` done) $ do
+        pre <- getGoals
+        eq <- addGoal a b
+        c
+        post <- getGoals
+        when (length pre /= length post) $ error "proof did not prove the goal"
+    return prf
 
 dump :: IO ()
 dump = do

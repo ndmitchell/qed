@@ -26,7 +26,7 @@ data Proved = Defined | Proved deriving (Show,Eq)
 
 data State = State
     {types :: [(String, [(Con,Int)])] -- these should go away
-    ,proof :: [(Equal, Proved)]
+    ,proved :: [(Equal, Proved)]
     ,goals :: [Goal] -- none are literally equal
     } deriving Show
 
@@ -45,7 +45,7 @@ invalid :: String -> a
 invalid x = error $ "Proof step is invalid, " ++ x
 
 promote :: State -> State
-promote s@State{goals = Goal t []:xs} = promote $ s{proof = proof s ++ [(t,Proved)], goals = xs}
+promote s@State{goals = Goal t []:xs} = promote $ s{proved = proved s ++ [(t,Proved)], goals = xs}
 promote s@State{goals = Goal t ((a :=: b, _):gs):xs} | a == b = promote $ s{goals = Goal t gs : xs}
 promote s = s
 
@@ -55,7 +55,7 @@ instance Pretty Equal where
 instance Pretty State where
     pretty State{..} = unlines $
         [unwords $ "data" : x : "=" : intercalate ["|"] [fromCon y : replicate n "_" | (y,n) <- ys] | (x,ys) <- types] ++
-        ["\n" ++ pretty x ++ (if b == Defined then " -- defined" else "") | (x,b) <- proof] ++
+        ["\n" ++ pretty x ++ (if b == Defined then " -- defined" else "") | (x,b) <- proved] ++
         ["\n-- GOAL\n" ++ pretty a ++ concat
             ["\n-- SUBGOAL" ++ (if reduced == Reduced then " (reduced)" else "") ++ "\n" ++
              pretty a | (a, reduced) <- xs]
@@ -94,13 +94,13 @@ firstSubgoal i = withState $ \s@State{goals=Goal a bs:rest} ->
 defineFunction :: String -> Exp -> IO Equal
 defineFunction name body = do
     let prf = Var (V name) :=: body
-    withState $ \s -> s{proof = proof s ++ [(prf, Defined)]}
+    withState $ \s -> s{proved = proved s ++ [(prf, Defined)]}
     return prf
 
 -- | Define a new data type, defines the case splitting rule.
 defineData :: [(String,Int)] -> IO Equal
 defineData ctrs = do
-    withState $ \s -> s{proof = proof s ++ [(prf, Defined)]}
+    withState $ \s -> s{proved = proved s ++ [(prf, Defined)]}
     return prf
     where
         v1:vs = fresh []
@@ -118,8 +118,8 @@ applyProof given@(from :=: to) new = withState $ \s ->
                     -> s{goals = Goal r1 ((new, reduced):r2) : r3}
                 | otherwise -> error $ "failed to match proof\n" ++ pretty given ++ "\n" ++ pretty old ++ "\n" ++ pretty new
     where
-        valid s prf | prf `elem` map fst (proof s) = True
-                    | sym prf `elem` map fst (proof s) = True
+        valid s prf | prf `elem` map fst (proved s) = True
+                    | sym prf `elem` map fst (proved s) = True
                     | Goal t ((_,Reduced):_):_ <- goals s, prf `elem` [t, sym t] = True
                     | otherwise = False
 
@@ -173,7 +173,7 @@ getState :: IO State
 getState = readIORef state
 
 getGoals = goals <$> getState
-getProofs = map fst . proof <$> getState
+getProofs = map fst . proved <$> getState
 
 withState :: (State -> State) -> IO ()
 withState f = do

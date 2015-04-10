@@ -17,41 +17,41 @@ main = run $ do
     auto splitCon
     auto removeLam
 
-    goal "\\x -> [] ++ x" "\\x -> x"
-    unfold "++"
+    proof "\\x -> [] ++ x" "\\x -> x" $ do
+        unfold "++"
 
-    goal "\\x -> x ++ []" "\\x -> x"
-    unfold "++"
-    rhs $ unfold "[]"
-    induct
+    proof "\\x -> x ++ []" "\\x -> x" $ do
+        unfold "++"
+        rhs $ unfold "[]"
+        induct
 
-    goal "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
-    unfold "++"
-    unfold "++"
-    rhs $ unfold "++"
-    rhs $ unfold "++"
-    induct
+    proof "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)" $ do
+        unfold "++"
+        unfold "++"
+        rhs $ unfold "++"
+        rhs $ unfold "++"
+        induct
 
-    goal "map id" "id"
-    unfold "map"
-    rhs $ unfold "id"
-    rhs $ unfold "[]"
-    unfold "id"
-    induct
-    unfold "id"
+    proof "map id" "id" $ do
+        unfold "map"
+        rhs $ unfold "id"
+        rhs $ unfold "[]"
+        unfold "id"
+        induct
+        unfold "id"
 
-    g <- goal "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
-    unfold "map"
-    unfold "map"
-    rhs $ unfold "map"
-    induct
+    proof "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))" $ do
+        unfold "map"
+        unfold "map"
+        rhs $ unfold "map"
+        induct
 
-    goal "\\f g -> map f . map g" "\\f g -> map (f . g)"
-    unfold "."
-    unfold "."
-    unfold "map"
-    unfold "map"
-    rhs $ unfold "map"
-    unify $ refold "."
-    induct
-    unfold "."
+    proof "\\f g -> map f . map g" "\\f g -> map (f . g)" $ do
+        unfold "."
+        unfold "."
+        unfold "map"
+        unfold "map"
+        rhs $ unfold "map"
+        unify $ refold "."
+        induct
+        unfold "."
