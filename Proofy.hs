@@ -131,11 +131,12 @@ apply prf@((fromLams -> (as,a)) :=: b) = do
     State2{..} <- readIORef state2
     let swp = if applyRhs then sym else id
     Goal _ ((t,_):_):_ <- getGoals
-    case [ do rewriteExp $ swp $ ctx $ apps (lams as a) $ map snd sub
-              applyProof prf $ swp $ ctx $ apps b $ map snd sub
+    case [ do let args = [fromMaybe (Con $ C "_") $ lookup v sub | v <- as]
+              rewriteExp $ swp $ ctx $ apps (lams as a) args
+              applyProof prf $ swp $ ctx $ apps b args
          | (val,ctx) <- contextsBi $ swp t, Just sub <- [unifier as a val], applyUnify || all (isVar . snd) sub] of
         new | length new > fromJust applyAt -> new !! fromJust applyAt
-        _ -> error $ "Trying to apply:\n" ++ pretty (a :=: b) ++ "\nTo:\n" ++ pretty t
+        _ -> error $ "Trying to apply:\n" ++ pretty prf ++ "\nTo:\n" ++ pretty t
     runAutos
 
 
@@ -143,13 +144,17 @@ isVar Var{} = True; isVar _ = False
 
 -- if you were to subtitute the binding in the first expression, you would come up with something equivalent to the second
 unifier :: [Var] -> Exp -> Exp -> Maybe [(Var, Exp)]
-unifier fv a b = f fv (relabel a) (relabel b)
+unifier fv = f []
     where
-        f fv (Var x) y | x `elem` fv = Just [(x, y)]
-        f fv (Con c1) (Con c2) = Just []
-        f fv (App x1 y1) (App x2 y2) = f fv x1 x2 & f fv y1 y2
-        f fv (relabel -> Lam v1 x1) (relabel -> Lam v2 x2) | v1 == v2 = f (delete v1 fv) x1 x2
-        f fv (Var x) (Var y) | x `notElem` fv, x == y = Just []
+        f sub (Var x) y | x `elem` fv, x `notElem` map fst sub = Just [(x, y)]
+        f sub (Var x) (Var y) | (x,y) `elem` sub || (x `notElem` fv && x `notElem` map fst sub && y `notElem` map snd sub && x == y) = Just []
+        f sub (Con c1) (Con c2) = Just []
+        f sub (App x1 y1) (App x2 y2) = f sub x1 x2 & f sub y1 y2
+        f sub (Lam v1 x1) (Lam v2 x2) = f ((v1,v2):sub) x1 x2
+        f sub (Case o1 a1) (Case o2 a2) | length a1 == length a2 = foldr (&) (f sub o1 o2) $ zipWith g a1 a2
+            where g (PCon c1 vs1, b1) (PCon c2 vs2, b2) | c1 == c2 && length vs1 == length vs2 = f (zip vs1 vs2 ++ sub) b1 b2
+                  g (PWild, b1) (PWild, b2) = f sub b1 b2
+                  g _ _ = Nothing
         f _ _ _ = Nothing
 
         Just a & Just b | let ab = nubOrd $ a ++ b, length (nubOrd $ map fst ab) == length ab = Just ab

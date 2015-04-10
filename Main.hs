@@ -29,12 +29,12 @@ main = run $ do
     proof "\\x -> [] ++ x" "\\x -> x" $ do
         unfold "++"
 
-    proof "\\x -> x ++ []" "\\x -> x" $ do
+    appendNil <- proof "\\x -> x ++ []" "\\x -> x" $ do
         unfold "++"
         rhs $ unfold "[]"
         induct
 
-    proof "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)" $ do
+    appendAssoc <- proof "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)" $ do
         unfold "++"
         unfold "++"
         rhs $ unfold "++"
@@ -84,8 +84,24 @@ main = run $ do
     revStrict <- proof "\\xs ys -> rev xs ys" "\\x ys -> case x of [] -> ys; x:xs -> rev (x:xs) ys" $ do
         unfold "rev" >> rhs (unfold "rev")
 
+    define "rev2 x = case x of [] -> []; x:xs -> rev2 xs ++ [x]"
+
+    rev2 <- proof "reverse" "rev2" $ do
+        acc <- proof "\\a b -> rev a b" "\\a b -> rev2 a ++ b" $ do
+            unfold "rev" >> unfold "rev2" >> unfold "++" >> unlet
+            unify induct
+            unify $ refold "++"
+            unify $ apply appendAssoc
+            at 2 $ unfold "++"
+            at 2 $ unfold "++"
+        error "todo"
+
+
+
+{-
     proof "\\a b c -> last (a:b:c)" "\\a b c -> last (b:c)" $ do
         unfold "last"
+-}
 
 --    proof "\\a b c ys zs -> head (rev (a:b:c) ys)" "\\a b c ys zs -> head (rev (b:c) zs)" $ do
   --      unfold "rev"
