@@ -140,9 +140,3 @@ induct :: IO ()
 induct = do
     Goal t _:_ <- getGoals
     apply t
-
-relam :: [Int] -> IO ()
-relam order = withSubgoal $ \((fromLams -> (as,a)) :=: (fromLams -> (bs,b)), reduced) ->
-    if sort order /= [1..length as] || length as /= length bs then error "no relam" else
-        [(lams (f as) a :=: lams (f bs) b, reduced)]
-    where f xs = map (xs !!) $ map pred order

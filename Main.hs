@@ -35,7 +35,6 @@ main = flip onException dump $ do
     rhs $ unfold "++" >> simples >> simples
     splitCase
     splitCon
-    relam [1,4,5,2,3]
     induct
     simples
 
