@@ -4,7 +4,6 @@ module Sugar(module Sugar) where
 
 import Core
 import Exp
-import Data.IORef
 import Data.Generics.Uniplate.Data
 import Data.List.Extra
 import Simplify
@@ -25,13 +24,13 @@ ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
 
 dump :: IO ()
 dump = do
-    s <- readIORef state
+    s <- getState
     print s
 
 
 ask :: Exp -> IO Equal
 ask x = do
-    s <- readIORef state
+    s <- getState
     return $ head $ [a :=: b | a :=: b <- proof s, a == x] ++ error ("No proof found, " ++ show x)
 
 apply :: Equal -> IO ()
@@ -68,7 +67,7 @@ simples = do
 
 split :: String -> IO ()
 split typ = do
-    s <- readIORef state
+    s <- getState
     let alts | Just ctrs <- lookup typ $ types s = [(PCon a vs, Con a `apps` map Var vs) | (a,b) <- ctrs, let vs = take b $ fresh []]
     withSubgoal $ \(a :=: b, reduced) ->
         case [ctx $ Case (Var var) alts | let bad = free a, (Var var, ctx) <- contextsBi a, var `notElem` bad] of
@@ -80,7 +79,7 @@ eq = withSubgoal $ \(a :=: b, _) -> if eval a /= eval b then error "not equivale
 
 induct :: IO ()
 induct = do
-    State{goals=Goal t _:_} <- readIORef state
+    State{goals=Goal t _:_} <- getState
     apply t
 
 relam :: [Int] -> IO ()

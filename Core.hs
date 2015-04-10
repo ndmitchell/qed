@@ -1,6 +1,14 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Core(module Core) where
+module Core(
+    Equal(..), sym,
+    Goal(..), State(..),
+    resetState, getState,
+    defineFunction, defineData, addGoal,
+    firstGoal, firstSubgoal, rewriteExp, applyProof,
+    splitCase, splitCon, removeLam,
+    withState, withSubgoal,
+    ) where
 
 import Exp
 import System.IO.Unsafe
@@ -24,7 +32,8 @@ data Goal = Goal Equal [(Equal, Bool)] -- prove the ultimate goal, given a list 
 sym :: Equal -> Equal
 sym (a :=: b) = b :=: a
 
-reset = withState $ const $ State [] [] [] []
+resetState :: IO ()
+resetState = withState $ const $ State [] [] [] []
 
 
 promote :: State -> State
