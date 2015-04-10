@@ -3,11 +3,9 @@
 module Main(main) where
 
 import Proofy
-import Control.Exception
 
 
-main = flip onException dump $ do
-    reset
+main = run $ do
     define "data Nil_ a = Nil_ | Cons_ a [a]"
     define "(.) f g x = f (g x)"
     define "(++) x y = case x of [] -> y; a:b -> a : (b ++ y)"
@@ -79,5 +77,3 @@ main = flip onException dump $ do
     unfold "map"
     rhs $ unfold "map"
     simples >> simples
-    dump
-    putStrLn "QED"

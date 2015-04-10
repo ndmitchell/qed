@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Proofy(dump, reset, define, goal, unfold, simples, rhs, splitCase, splitCon, induct, at, removeLam, apply, ats, unify, refold) where
+module Proofy(run, dump, reset, define, goal, unfold, simples, rhs, splitCase, splitCon, induct, at, removeLam, apply, ats, unify, refold) where
 
 import Core
 import Exp
@@ -21,6 +21,14 @@ data State2 = State2
     ,applyAt :: Maybe Int
     ,applyUnify :: Bool
     }
+
+run :: IO () -> IO ()
+run act = flip onException dump $ do
+    reset
+    act
+    dump
+    putStrLn "QED"
+
 
 {-# NOINLINE state2 #-}
 state2 :: IORef State2
