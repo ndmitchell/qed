@@ -30,42 +30,42 @@ delFsts x = filter (flip notElem x . fst)
 
 fast = "--fast" `elem` unsafePerformIO getArgs
 
-idempotent :: (ShowNice a, Eq a) => String -> (a -> a) -> (a -> a)
+idempotent :: (Pretty a, Eq a) => String -> (a -> a) -> (a -> a)
 idempotent name f x0
     | fast = x1
     | x1 == x2 = x1
     | otherwise = error $ unlines
         ["START Idempotent check failed for " ++ name ++ "!"
         ,"Input:"
-        ,showNice x0
+        ,pretty x0
         ,"After first application:"
-        ,showNice x1
+        ,pretty x1
         ,"After second application:"
-        ,showNice x2
+        ,pretty x2
         ,"END Idempotent check failed for " ++ name ++ "!"
         ]
     where x1 = f x0
           x2 = f x1
 
-equivalentOn :: (ShowNice a, ShowNice b, Eq b) => (a -> b) -> String -> a -> a -> a
+equivalentOn :: (Pretty a, Pretty b, Eq b) => (a -> b) -> String -> a -> a -> a
 equivalentOn op name x y
     | fast = y
     | xx == yy = y
     | otherwise = unsafePerformIO $ do
-        writeFile "error.log" $ "-- Equivalent check failed for " ++ name ++ "\n" ++ showNice x
+        writeFile "error.log" $ "-- Equivalent check failed for " ++ name ++ "\n" ++ pretty x
         error $ unlines
             ["START Equivalent check failed for " ++ name ++ "!"
             ,"Input:"
-            ,showNice x
+            ,pretty x
             ,"Output:"
-            ,showNice y
+            ,pretty y
             ,"Input (reduced):"
-            ,showNice xx
+            ,pretty xx
             ,"Output (reduced):"
-            ,showNice yy
+            ,pretty yy
             ,"END Equivalent check failed for " ++ name ++ "!"
             ]
     where xx = op x
           yy = op y
 
-class ShowNice a where showNice :: a -> String
+class Pretty a where pretty :: a -> String

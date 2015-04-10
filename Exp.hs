@@ -19,7 +19,7 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Char
 import Control.Arrow
-import Language.Haskell.Exts hiding (Exp,Name,Pat,Var,Let,App,Case,Con,name,parse)
+import Language.Haskell.Exts hiding (Exp,Name,Pat,Var,Let,App,Case,Con,name,parse,Pretty)
 import qualified Language.Haskell.Exts as H
 import HSE
 import Util hiding (fresh)
@@ -78,12 +78,10 @@ fromApps (App x y) = (a,b ++ [y])
     where (a,b) = fromApps x
 fromApps x = (x,[])
 
-pretty :: Exp -> String
-pretty = prettyPrint . unparen . inflate . toExp
-    where unparen (Paren x) = x
-          unparen x = x
-
-instance ShowNice Exp where showNice = pretty
+instance Pretty Exp where
+    pretty = prettyPrint . unparen . inflate . toExp
+        where unparen (Paren x) = x
+              unparen x = x
 
 prettys :: [(Var,Exp)] -> String
 prettys = prettyPrint . toHSE

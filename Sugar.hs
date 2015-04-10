@@ -25,7 +25,7 @@ ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
 dump :: IO ()
 dump = do
     s <- getState
-    print s
+    putStrLn $ pretty s
 
 
 ask :: Exp -> IO Equal

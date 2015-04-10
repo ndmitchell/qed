@@ -11,6 +11,7 @@ module Core(
     ) where
 
 import Exp
+import Util
 import System.IO.Unsafe
 import Data.IORef
 import Data.Generics.Uniplate.Data
@@ -35,20 +36,25 @@ sym (a :=: b) = b :=: a
 resetState :: IO ()
 resetState = withState $ const $ State [] [] [] []
 
+invalid :: String -> a
+invalid x = error $ "Proof step is invalid, " ++ x
 
 promote :: State -> State
 promote s@State{goals = Goal t []:xs} = promote $ s{proof = proof s ++ [t], goals = xs}
 promote s@State{goals = Goal t ((a :=: b, _):gs):xs} | a == b = promote $ s{goals = Goal t gs : xs}
 promote s = s
 
-instance Show State where
-    show State{..} = unlines $
+instance Pretty Equal where
+    pretty (a :=: b) = pretty a ++ " = " ++ pretty b
+
+instance Pretty State where
+    pretty State{..} = unlines $
         [unwords $ "data" : x : "=" : intercalate ["|"] [fromCon y : replicate n "_" | (y,n) <- ys] | (x,ys) <- types] ++
-        ["\n" ++ pretty a ++ " = " ++ pretty b | a :=: b <- proof] ++
-        ["\n-- GOAL\n" ++ pretty a ++ " = " ++ pretty b ++ concat
+        ["\n" ++ pretty x | x <- proof] ++
+        ["\n-- GOAL\n" ++ pretty a ++ concat
             ["\n-- SUBGOAL" ++ (if reduced then " (reduced)" else "") ++ "\n" ++
-             pretty a ++ " = " ++ pretty b | (a :=: b, reduced) <- xs]
-            | Goal (a :=: b) xs <- goals]
+             pretty a | (a, reduced) <- xs]
+            | Goal a xs <- goals]
 
 
 -- trusted Core operations:
@@ -119,9 +125,9 @@ rewriteExp (a :=: b) = withSubgoal $ \(x :=: y, reduced) ->
 
 
 splitCase :: IO ()
-splitCase = withSubgoal $ \((fromLams -> (as,Case a a2)) :=: (fromLams -> (bs,Case b b2)), reduced) ->
-    if as /= bs || a /= b || map fst a2 /= map fst b2 then error "different" else
-        [ (lams (as ++ f pa) ea :=: lams (bs ++ f pb) eb, reduced) | ((pa,ea),(pb,eb)) <- zip a2 b2]
+splitCase = withSubgoal $ \o@((fromLams -> (as,Case a a2)) :=: (fromLams -> (bs,Case b b2)), reduced) ->
+    if as /= bs || a /= b || map fst a2 /= map fst b2 then invalid $ "splitCase lambdas are different lengths, " ++ pretty (fst o)
+    else [ (lams (as ++ f pa) ea :=: lams (bs ++ f pb) eb, reduced) | ((pa,ea),(pb,eb)) <- zip a2 b2]
     where
         f (PCon _ vs) = vs
         f _ = []
