@@ -22,7 +22,6 @@ main = do
     unfold "++"
     simples
     rhs $ split "[]"
-    simples
     splitCase
     splitCon
     simples

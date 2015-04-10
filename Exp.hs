@@ -4,6 +4,7 @@
 module Exp(
     Var(..), Con(..), Exp(..), Pat(..),
     fromApps, fromLams, fromLets, lets, lams, apps,
+    patCon, patVars,
     caseCon,
     prettys, pretty,
     vars, varsP, free, subst, unsubst, relabel, fresh,
@@ -47,6 +48,14 @@ data Pat
     = PCon Con [Var]
     | PWild
       deriving (Data,Typeable,Show,Eq)
+
+patVars :: Pat -> [Var]
+patVars (PCon _ vs) = vs
+patVars PWild = []
+
+patCon :: Pat -> Maybe Con
+patCon (PCon c _) = Just c
+patCon PWild = Nothing
 
 caseCon :: Exp -> Maybe ([(Var,Exp)], Exp)
 caseCon o@(Case (fromApps -> (Con c, xs)) alts) = Just $ headNote (error "Malformed case: " ++ pretty o) $ mapMaybe f alts

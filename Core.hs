@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
+{-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns, TupleSections #-}
 
 module Core(
     Equal(..), sym,
@@ -125,30 +125,36 @@ rewriteExp (a :=: b) = withSubgoal $ \(x :=: y, reduced) ->
 
 
 splitCase :: IO ()
-splitCase = withSubgoal $ \o@((fromLams -> (as,Case a a2)) :=: (fromLams -> (bs,Case b b2)), reduced) ->
-    if as /= bs || a /= b || map fst a2 /= map fst b2 then invalid $ "splitCase lambdas are different lengths, " ++ pretty (fst o)
-    else [ (lams (as ++ f pa) ea :=: lams (bs ++ f pb) eb, reduced) | ((pa,ea),(pb,eb)) <- zip a2 b2]
+splitCase = withSubgoal $ \(o@(a :=: b), reduced) ->
+    if pattern a /= pattern b then invalid $ "splitCase on different patterns, " ++ pretty o
+    else map (,reduced) $ zipWith (:=:) (split a) (split b)
     where
-        f (PCon _ vs) = vs
-        f _ = []
+        -- distinguishes the salient features
+        pattern (fromLams . relabel -> (vs, Case _ alts)) = (vs, map (patCon . fst) alts)
+        pattern x = invalid $ "splitCase not on a case, " ++ pretty x
+
+        split (fromLams -> (vs, Case on alts)) = lams vs on : [lams (vs ++ patVars p) x | (p,x) <- alts]
 
 
 splitCon :: IO ()
-splitCon = withSubgoal $ \((fromLams -> (as, fromApps -> (Con a,a2))) :=: (fromLams -> (bs, fromApps -> (Con b, b2))), reduced) ->
-    if as /= bs || a /= b || length a2 /= length b2 then error "different" else
-        [(lams as a :=: lams bs b, True) | (a,b) <- zip a2 b2]
+splitCon = withSubgoal $ \(o@(a :=: b), _) ->
+    if pattern a /= pattern b then invalid $ "splitCon on different patterns, " ++ pretty o
+    else map (,True) $ zipWith (:=:) (split a) (split b)
+    where
+        pattern (fromLams -> (vs, fromApps -> (Con ctr, args))) = (length vs, ctr, length args)
+        pattern x = invalid $ "splitCon not a con, " ++ pretty x
+
+        split (fromLams -> (vs, fromApps -> (Con ctr, args))) = map (lams vs) args
 
 
 -- technically not necessary, just cleans up quantifiers
 removeLam :: IO ()
 removeLam = withSubgoal $ \((fromLams -> (as, a)) :=: (fromLams -> (bs, b)), reduced) ->
     let rem = f as a `intersect` f bs b
-    in if null rem then error "removeLam, none are redundant" else [(g rem as a :=: g rem bs b, reduced)]
+    in if null rem then invalid "removeLam, none are redundant" else [(g rem as a :=: g rem bs b, reduced)]
     where
         f as a = [i | let fr = free a, (i,x) <- zip [0..] as, x `notElem` fr]
         g rem as a = lams [x | (i,x) <- zip [0..] as, i `notElem` rem] a
-
-
 
 
 {-# NOINLINE state #-}
