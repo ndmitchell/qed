@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Sugar(module Sugar, module Core) where
+module Proofy(module Proofy, module Core) where
 
 import Core
 import Exp
@@ -9,6 +9,8 @@ import Data.List.Extra
 import Simplify
 import Data.Tuple.Extra
 
+reset :: IO ()
+reset = resetState
 
 define :: String -> String -> IO Equal
 define a b = defineFunction a (parse b)

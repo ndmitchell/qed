@@ -2,7 +2,7 @@
 
 module Main(main) where
 
-import Sugar
+import Proofy
 
 
 main = do
