@@ -6,8 +6,7 @@ module Core(
     resetState, getState, getProofs, getGoals,
     defineFunction, defineData, addGoal,
     firstGoal, firstSubgoal, rewriteExp, applyProof,
-    splitCase, splitCon, removeLam,
-    withState, withSubgoal,
+    splitCase, splitCon, removeLam
     ) where
 
 import Control.Applicative

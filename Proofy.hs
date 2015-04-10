@@ -13,7 +13,7 @@ import Simplify
 import System.IO.Unsafe
 import Data.IORef
 import Data.Maybe
-import Data.Tuple.Extra
+
 
 data State2 = State2
     {names :: [(String, Equal)]
@@ -35,10 +35,8 @@ define :: String -> IO Equal
 define x = case deflate $ fromParseResult $ parseDecl x of
     DataDecl _ _ _ name _ ctrs [] -> do
         let f (fromName -> x) = fromMaybe x $ lookup x [("Nil_","[]"),("Cons_",":")]
-        let (nam,cts) = (f name, [(f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs])
-        withState $ \s -> s{types = (nam, map (first C) cts) : types s}
-        eq <- defineData cts
-        named nam eq
+        eq <- defineData [(f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs]
+        named (f name) eq
         return eq
     PatBind _ (PVar x) (UnGuardedRhs bod) (BDecls []) -> do
         eq <- defineFunction (fromName x) (fromExp bod)
@@ -125,17 +123,6 @@ simples :: IO ()
 simples = do
     Goal _ ((a :=: b, _):_):_ <- getGoals
     rewriteExp (simplify a :=: simplify b)
-
-split :: String -> IO ()
-split typ = do
-    State2{..} <- readIORef state2
-    let swp = if applyRhs then sym else id
-    s <- getState
-    let alts | Just ctrs <- lookup typ $ types s = [(PCon a vs, Con a `apps` map Var vs) | (a,b) <- ctrs, let vs = take b $ fresh []]
-    withSubgoal $ \((swp -> a :=: b), reduced) ->
-        case [ctx $ Case (Var var) alts | let bad = free a, (Var var, ctx) <- contextsBi a, var `notElem` bad] of
-            a:_ -> [(swp $ a :=: b, reduced)]
-
 
 induct :: IO ()
 induct = do
