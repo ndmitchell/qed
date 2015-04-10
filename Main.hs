@@ -2,23 +2,22 @@
 
 module Main(main) where
 
-import Core
 import Sugar
 
 
 main = do
     resetState
     ctors "[]" [("[]",0),(":",2)]
-    defineFunctionP "." "\\f g x -> f (g x)"
-    defineFunctionP "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
-    defineFunctionP "id" "\\x -> x"
-    defineFunctionP "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
+    define "." "\\f g x -> f (g x)"
+    define "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
+    define "id" "\\x -> x"
+    define "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
 
-    addGoalP "\\x -> [] ++ x" "\\x -> x"
+    goal "\\x -> [] ++ x" "\\x -> x"
     unfold "++"
     simples
 
-    addGoalP "\\x -> x ++ []" "\\x -> x"
+    goal "\\x -> x ++ []" "\\x -> x"
     unfold "++"
     simples
     rhs $ split "[]"
@@ -28,7 +27,7 @@ main = do
     induct
     simples
 
-    addGoalP "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
+    goal "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
     unfold "++" >> simples
     unfold "++" >> simples
     rhs $ unfold "++" >> simples
@@ -39,7 +38,7 @@ main = do
     induct
     simples
 
-    addGoalP "map id" "id"
+    goal "map id" "id"
     unfold "map"
     simples
     rhs $ unfold "id"
@@ -51,7 +50,7 @@ main = do
     induct
     unfold "id" >> simples
 
-    g <- addGoalP "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
+    g <- goal "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
     unfold "map"
     unfoldEx 1 "map" >> simples
     rhs $ unfold "map" >> simples
@@ -66,7 +65,7 @@ main = do
     simples
     simples
 
-    addGoalP "\\f g -> map f . map g" "\\f g -> map (f . g)"
+    goal "\\f g -> map f . map g" "\\f g -> map (f . g)"
     unfold "."
     unfold "."
     simples

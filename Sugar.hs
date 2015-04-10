@@ -10,11 +10,11 @@ import Simplify
 import Data.Tuple.Extra
 
 
-defineFunctionP :: String -> String -> IO Equal
-defineFunctionP a b = defineFunction a (parse b)
+define :: String -> String -> IO Equal
+define a b = defineFunction a (parse b)
 
-addGoalP :: String -> String -> IO Equal
-addGoalP a b = addGoal (parse a) (parse b)
+goal :: String -> String -> IO Equal
+goal a b = addGoal (parse a) (parse b)
 
 askP :: String -> IO Equal
 askP = ask . parse
