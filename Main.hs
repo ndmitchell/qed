@@ -12,68 +12,44 @@ main = run $ do
     define "id x = x"
     define "map f xs = case xs of [] -> []; x:xs -> f x : map f xs"
 
+    auto simples
+    auto splitCase
+    auto splitCon
+    auto removeLam
+
     goal "\\x -> [] ++ x" "\\x -> x"
     unfold "++"
-    simples
 
     goal "\\x -> x ++ []" "\\x -> x"
     unfold "++"
     rhs $ unfold "[]"
-    simples
-    splitCase
-    splitCon
-    simples
     induct
-    simples
 
     goal "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
-    unfold "++" >> simples
-    unfold "++" >> simples
-    rhs $ unfold "++" >> simples
-    rhs $ unfold "++" >> simples >> simples
-    splitCase
-    splitCon
+    unfold "++"
+    unfold "++"
+    rhs $ unfold "++"
+    rhs $ unfold "++"
     induct
-    simples
 
     goal "map id" "id"
     unfold "map"
-    simples
     rhs $ unfold "id"
     rhs $ unfold "[]"
-    simples
-    splitCase
-    splitCon
-    unfold "id" >> simples
+    unfold "id"
     induct
-    unfold "id" >> simples
+    unfold "id"
 
     g <- goal "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
     unfold "map"
-    at 1 $ unfold "map" >> simples
-    rhs $ unfold "map" >> simples
-    simples
-    splitCase
-    splitCon
-    removeLam
-    induct
-    simples
     unfold "map"
     rhs $ unfold "map"
-    simples
+    induct
 
     goal "\\f g -> map f . map g" "\\f g -> map (f . g)"
     unfold "."
     unfold "."
-    simples
     unfold "map"
-    at 1 $ unfold "map"
+    unfold "map"
     rhs $ unfold "map"
-    simples >> simples
-    splitCase
-    splitCon
-    removeLam
     apply g
-    unfold "map"
-    rhs $ unfold "map"
-    simples >> simples

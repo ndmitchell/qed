@@ -1,18 +1,27 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Proofy(run, dump, reset, define, goal, unfold, simples, rhs, splitCase, splitCon, induct, at, removeLam, apply, ats, unify, refold) where
+module Proofy(
+    run, dump, reset,
+    define, goal, auto,
+    unfold, refold, simples, induct, splitCase, splitCon, removeLam,
+    apply, rhs, at, ats, unify
+    ) where
+
 
 import Core
 import Exp
 import HSE
 import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case,App)
 import Data.Generics.Uniplate.Data
-import Control.Exception
+import Control.Exception.Extra
+import Control.Applicative
 import Data.List.Extra
 import Simplify
 import System.IO.Unsafe
 import Data.IORef
 import Data.Maybe
+import Control.Monad.Extra
+import Data.Either.Extra
 
 
 data State2 = State2
@@ -20,6 +29,7 @@ data State2 = State2
     ,applyRhs :: Bool
     ,applyAt :: Maybe Int
     ,applyUnify :: Bool
+    ,autos :: [IO ()]
     }
 
 run :: IO () -> IO ()
@@ -29,15 +39,18 @@ run act = flip onException dump $ do
     dump
     putStrLn "QED"
 
+auto :: IO () -> IO ()
+auto x = modifyIORef state2 $ \s -> s{autos = autos s ++ [x]}
+
 
 {-# NOINLINE state2 #-}
 state2 :: IORef State2
-state2 = unsafePerformIO $ newIORef $ State2 [] False (Just 0) False
+state2 = unsafePerformIO $ newIORef $ State2 [] False (Just 0) False []
 
 reset :: IO ()
 reset = do
     resetState
-    writeIORef state2 $ State2 [] False (Just 0) False
+    writeIORef state2 $ State2 [] False (Just 0) False []
 
 define :: String -> IO Equal
 define x = case deflate $ fromParseResult $ parseDecl x of
@@ -102,6 +115,8 @@ apply prf@((fromLams -> (as,a)) :=: b) = do
          | (val,ctx) <- contextsBi $ swp t, Just sub <- [unifier as a val], applyUnify || all (isVar . snd) sub] of
         new | length new > fromJust applyAt -> new !! fromJust applyAt
         _ -> error $ "Trying to apply:\n" ++ pretty (a :=: b) ++ "\nTo:\n" ++ pretty t
+    whileM $ any isRight <$> mapM try_ autos
+
 
 isVar Var{} = True; isVar _ = False
 
@@ -129,7 +144,11 @@ refold x = apply . sym =<< ask x
 
 simples :: IO ()
 simples = do
+    whenM (null <$> getGoals) $ error "Nothing to simplify"
     Goal _ ((a :=: b, _):_):_ <- getGoals
+    let a2 = simplify a
+    let b2 = simplify b
+    when (a2 == a && b2 == b) $ error "Simplification didn't acheive anything"
     rewriteExp (simplify a :=: simplify b)
 
 induct :: IO ()
