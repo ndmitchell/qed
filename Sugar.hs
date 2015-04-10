@@ -11,17 +11,14 @@ import Simplify
 import Data.Tuple.Extra
 
 
-defineP :: String -> String -> IO ()
-defineP a b = define a (parse b)
+defineFunctionP :: String -> String -> IO ()
+defineFunctionP a b = defineFunction a (parse b)
 
 addGoalP :: String -> String -> IO Equal
 addGoalP a b = addGoal (parse a) (parse b)
 
 askP :: String -> IO Equal
 askP = ask . parse
-
-define :: String -> Exp -> IO ()
-define = defineFunction
 
 ctors :: String -> [(String,Int)] -> IO ()
 ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}

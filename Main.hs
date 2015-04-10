@@ -7,12 +7,12 @@ import Sugar
 
 
 main = do
-    reset
+    resetState
     ctors "[]" [("[]",0),(":",2)]
-    defineP "." "\\f g x -> f (g x)"
-    defineP "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
-    defineP "id" "\\x -> x"
-    defineP "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
+    defineFunctionP "." "\\f g x -> f (g x)"
+    defineFunctionP "++" "\\x y -> case x of [] -> y; a:b -> a : (b ++ y)"
+    defineFunctionP "id" "\\x -> x"
+    defineFunctionP "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
 
     addGoalP "\\x -> [] ++ x" "\\x -> x"
     unfold "++"
