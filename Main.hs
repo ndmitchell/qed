@@ -14,11 +14,11 @@ main = do
     defineP "id" "\\x -> x"
     defineP "map" "\\f xs -> case xs of [] -> []; x:xs -> f x : map f xs"
 
-    goalP "\\x -> [] ++ x" "\\x -> x"
+    addGoalP "\\x -> [] ++ x" "\\x -> x"
     unfold "++"
     simples
 
-    goalP "\\x -> x ++ []" "\\x -> x"
+    addGoalP "\\x -> x ++ []" "\\x -> x"
     unfold "++"
     simples
     rhs $ split "[]"
@@ -29,7 +29,7 @@ main = do
     induct
     simples
 
-    goalP "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
+    addGoalP "\\x y z -> (x ++ y) ++ z" "\\x y z -> x ++ (y ++ z)"
     unfold "++" >> simples
     unfold "++" >> simples
     rhs $ unfold "++" >> simples
@@ -40,7 +40,7 @@ main = do
     induct
     simples
 
-    goalP "map id" "id"
+    addGoalP "map id" "id"
     unfold "map"
     simples
     rhs $ unfold "id"
@@ -52,7 +52,7 @@ main = do
     induct
     unfold "id" >> simples
 
-    g <- goalP "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
+    g <- addGoalP "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))"
     unfold "map"
     unfoldEx 1 "map" >> simples
     rhs $ unfold "map" >> simples
@@ -67,7 +67,7 @@ main = do
     simples
     simples
 
-    goalP "\\f g -> map f . map g" "\\f g -> map (f . g)"
+    addGoalP "\\f g -> map f . map g" "\\f g -> map (f . g)"
     unfold "."
     unfold "."
     simples

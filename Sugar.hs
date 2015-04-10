@@ -14,8 +14,8 @@ import Data.Tuple.Extra
 defineP :: String -> String -> IO ()
 defineP a b = define a (parse b)
 
-goalP :: String -> String -> IO Equal
-goalP a b = goal (parse a) (parse b)
+addGoalP :: String -> String -> IO Equal
+addGoalP a b = addGoal (parse a) (parse b)
 
 askP :: String -> IO Equal
 askP = ask . parse
@@ -25,8 +25,6 @@ define = defineFunction
 
 ctors :: String -> [(String,Int)] -> IO ()
 ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
-
-goal = addGoal
 
 dump :: IO ()
 dump = do
