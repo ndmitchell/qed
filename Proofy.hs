@@ -35,10 +35,11 @@ define :: String -> IO Equal
 define x = case deflate $ fromParseResult $ parseDecl x of
     DataDecl _ _ _ name _ ctrs [] -> do
         let f (fromName -> x) = fromMaybe x $ lookup x [("Nil_","[]"),("Cons_",":")]
-        let ctors a b = withState $ \s -> s{types = (a,map (first C) b) : types s}
-
-        ctors (f name) [(f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs]
-        return undefined
+        let (nam,cts) = (f name, [(f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs])
+        withState $ \s -> s{types = (nam, map (first C) cts) : types s}
+        eq <- defineData cts
+        named nam eq
+        return eq
     PatBind _ (PVar x) (UnGuardedRhs bod) (BDecls []) -> do
         eq <- defineFunction (fromName x) (fromExp bod)
         named (fromName x) eq

@@ -20,7 +20,7 @@ main = flip onException dump $ do
 
     goal "\\x -> x ++ []" "\\x -> x"
     unfold "++"
-    rhs $ split "[]"
+    rhs $ unfold "[]"
     simples
     splitCase
     splitCon
@@ -42,7 +42,7 @@ main = flip onException dump $ do
     unfold "map"
     simples
     rhs $ unfold "id"
-    rhs $ split "[]"
+    rhs $ unfold "[]"
     simples
     splitCase
     splitCon
