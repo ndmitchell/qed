@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Proofy(module Proofy, module Core) where
+module Proofy(dump, reset, define, goal, unfold, simples, rhs, splitCase, splitCon, induct, at, removeLam, apply, ats, unify, refold) where
 
 import Core
 import Exp
