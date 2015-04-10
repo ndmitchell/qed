@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, DeriveDataTypeable, ViewPatterns #-}
 
-module Sugar(module Sugar) where
+module Sugar(module Sugar, module Core) where
 
 import Core
 import Exp
@@ -10,7 +10,7 @@ import Simplify
 import Data.Tuple.Extra
 
 
-defineFunctionP :: String -> String -> IO ()
+defineFunctionP :: String -> String -> IO Equal
 defineFunctionP a b = defineFunction a (parse b)
 
 addGoalP :: String -> String -> IO Equal
@@ -31,7 +31,7 @@ dump = do
 ask :: Exp -> IO Equal
 ask x = do
     s <- getState
-    return $ head $ [a :=: b | a :=: b <- proof s, a == x] ++ error ("No proof found, " ++ show x)
+    return $ head $ [a :=: b | (a :=: b,_) <- proof s, a == x] ++ error ("No proof found, " ++ show x)
 
 apply :: Equal -> IO ()
 apply = applyEx 0

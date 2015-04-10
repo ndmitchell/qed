@@ -18,29 +18,31 @@ import Data.Generics.Uniplate.Data
 import Data.List.Extra
 import Data.Data
 
+data Reduced = Reduced | Unreduced deriving Eq
+
+data Proved = Defined | Proved deriving Eq
 
 data State = State
     {types :: [(String, [(Con,Int)])] -- these should go away
-    ,defined :: [String] -- stop things being redefined
-    ,proof :: [Equal]
+    ,proof :: [(Equal, Proved)]
     ,goals :: [Goal] -- none are literally equal
     }
 
 data Equal = Exp :=: Exp deriving (Data,Typeable,Show,Eq)
 
-data Goal = Goal Equal [(Equal, Bool)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
+data Goal = Goal Equal [(Equal, Reduced)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
 
 sym :: Equal -> Equal
 sym (a :=: b) = b :=: a
 
 resetState :: IO ()
-resetState = withState $ const $ State [] [] [] []
+resetState = withState $ const $ State [] [] []
 
 invalid :: String -> a
 invalid x = error $ "Proof step is invalid, " ++ x
 
 promote :: State -> State
-promote s@State{goals = Goal t []:xs} = promote $ s{proof = proof s ++ [t], goals = xs}
+promote s@State{goals = Goal t []:xs} = promote $ s{proof = proof s ++ [(t,Proved)], goals = xs}
 promote s@State{goals = Goal t ((a :=: b, _):gs):xs} | a == b = promote $ s{goals = Goal t gs : xs}
 promote s = s
 
@@ -50,9 +52,9 @@ instance Pretty Equal where
 instance Pretty State where
     pretty State{..} = unlines $
         [unwords $ "data" : x : "=" : intercalate ["|"] [fromCon y : replicate n "_" | (y,n) <- ys] | (x,ys) <- types] ++
-        ["\n" ++ pretty x | x <- proof] ++
+        ["\n" ++ pretty x ++ (if b == Defined then " -- defined" else "") | (x,b) <- proof] ++
         ["\n-- GOAL\n" ++ pretty a ++ concat
-            ["\n-- SUBGOAL" ++ (if reduced then " (reduced)" else "") ++ "\n" ++
+            ["\n-- SUBGOAL" ++ (if reduced == Reduced then " (reduced)" else "") ++ "\n" ++
              pretty a | (a, reduced) <- xs]
             | Goal a xs <- goals]
 
@@ -68,7 +70,7 @@ instance Pretty State where
 
 addGoal :: Exp -> Exp -> IO Equal
 addGoal a b = do
-    withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, False)] : goals s}
+    withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, Unreduced)] : goals s}
     return $ a :=: b
 
 
@@ -86,17 +88,17 @@ firstSubgoal i = withState $ \s@State{goals=Goal a bs:rest} ->
 
 
 -- | Define a new function
-defineFunction :: String -> Exp -> IO ()
-defineFunction name body = withState $ \s ->
-    if name `elem` defined s then error $ "Already defined function, " ++ name else
-        s{defined = name : defined s, proof = proof s ++ [Var (V name) :=: body]}
-
+defineFunction :: String -> Exp -> IO Equal
+defineFunction name body = do
+    let prf = Var (V name) :=: body
+    withState $ \s -> s{proof = proof s ++ [(prf, Defined)]}
+    return prf
 
 -- | Define a new data type, defines the case splitting rule.
-defineData :: [(String,Int)] -> IO ()
-defineData ctrs = withState $ \s ->
-    if not $ disjoint (map fst ctrs) (defined s) then error $ "Already defined data, " ++ show ctrs else
-        s{defined = map fst ctrs ++ defined s, proof = proof s ++ [prf]}
+defineData :: [(String,Int)] -> IO Equal
+defineData ctrs = do
+    withState $ \s -> s{proof = proof s ++ [(prf, Defined)]}
+    return prf
     where
         v1:vs = fresh []
         prf = Lam v1 (Var v1) :=: Lam v1 (Case (Var v1) alts)
@@ -112,16 +114,16 @@ applyProof given@(from :=: to) new = withState $ \s ->
                 | transformBi (\x -> if x == from then to else x) x == new
                 -> s{goals = Goal r1 ((new, reduced):r2) : r3}
     where
-        valid s prf | prf `elem` proof s = True
-                    | sym prf `elem` proof s = True
-                    | Goal t ((_,True):_):_ <- goals s, prf `elem` [t, sym t] = True
+        valid s prf | prf `elem` map fst (proof s) = True
+                    | sym prf `elem` map fst (proof s) = True
+                    | Goal t ((_,Reduced):_):_ <- goals s, prf `elem` [t, sym t] = True
                     | otherwise = False
 
 
 -- rewrite expressions, must be equivalent under eval
 rewriteExp :: Equal -> IO ()
-rewriteExp (a :=: b) = withSubgoal $ \(x :=: y, reduced) ->
-    if eval x == eval a &&  eval y == eval b then [(a :=: b,reduced)] else error "rewriteExp, not equal"
+rewriteExp (a :=: b) = withSubgoal $ \(o@(x :=: y), reduced) ->
+    if eval x == eval a && eval y == eval b then [(a :=: b,reduced)] else invalid "rewriteExp, not equal"
 
 
 splitCase :: IO ()
@@ -139,7 +141,7 @@ splitCase = withSubgoal $ \(o@(a :=: b), reduced) ->
 splitCon :: IO ()
 splitCon = withSubgoal $ \(o@(a :=: b), _) ->
     if pattern a /= pattern b then invalid $ "splitCon on different patterns, " ++ pretty o
-    else map (,True) $ zipWith (:=:) (split a) (split b)
+    else map (,Reduced) $ zipWith (:=:) (split a) (split b)
     where
         pattern (fromLams -> (vs, fromApps -> (Con ctr, args))) = (length vs, ctr, length args)
         pattern x = invalid $ "splitCon not a con, " ++ pretty x
@@ -159,7 +161,7 @@ removeLam = withSubgoal $ \((fromLams -> (as, a)) :=: (fromLams -> (bs, b)), red
 
 {-# NOINLINE state #-}
 state :: IORef State
-state = unsafePerformIO $ newIORef $ State [] [] [] []
+state = unsafePerformIO $ newIORef $ State [] [] []
 
 getState :: IO State
 getState = readIORef state
@@ -169,9 +171,7 @@ withState f = modifyIORef state (promote . f)
 
 -- Nothing indicates you proved it
 withGoal :: (Goal -> Goal) -> IO ()
-withGoal f = withState $ \s@State{goals=g:gs} -> case f g of
-    Goal t [] -> s{goals = gs, proof = proof s ++ [t]}
-    g -> s{goals = g:gs}
+withGoal f = withState $ \s@State{goals=g:gs} -> s{goals = f g : gs}
 
-withSubgoal :: ((Equal, Bool) -> [(Equal, Bool)]) -> IO ()
+withSubgoal :: ((Equal, Reduced) -> [(Equal, Reduced)]) -> IO ()
 withSubgoal f = withGoal $ \(Goal t (p:ps)) -> Goal t (f p ++ ps)
