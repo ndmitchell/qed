@@ -114,9 +114,10 @@ applyProof :: Equal -> Equal -> IO ()
 applyProof given@(from :=: to) new = withState $ \s ->
     if not $ valid s given then error $ "applyProof called with an invalid proof, " ++ show given else
         case goals s of
-            Goal r1 ((x, reduced):r2):r3
-                | transformBi (\x -> if x == from then to else x) x == new
-                -> s{goals = Goal r1 ((new, reduced):r2) : r3}
+            Goal r1 ((old, reduced):r2):r3
+                | new `elem` [ctx to | (val,ctx) <- contextsBi old, val == from]
+                    -> s{goals = Goal r1 ((new, reduced):r2) : r3}
+                | otherwise -> error $ "failed to match proof\n" ++ pretty given ++ "\n" ++ pretty old ++ "\n" ++ pretty new
     where
         valid s prf | prf `elem` map fst (proof s) = True
                     | sym prf `elem` map fst (proof s) = True
@@ -127,7 +128,9 @@ applyProof given@(from :=: to) new = withState $ \s ->
 -- rewrite expressions, must be equivalent under eval
 rewriteExp :: Equal -> IO ()
 rewriteExp (a :=: b) = withSubgoal $ \(o@(x :=: y), reduced) ->
-    if eval x == eval a && eval y == eval b then [(a :=: b,reduced)] else invalid "rewriteExp, not equal"
+    if eval x /= eval a then invalid $ "rewriteExp\n" ++ pretty x ++ "\nNot equal to:\n" ++ pretty a
+    else if eval y /= eval b then invalid $ "rewriteExp\n" ++ pretty y ++ "\nNot equal to:\n" ++ pretty b
+    else [(a :=: b,reduced)]
 
 
 splitCase :: IO ()

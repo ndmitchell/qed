@@ -5,7 +5,7 @@ module Proofy(module Proofy, module Core) where
 import Core
 import Exp
 import HSE
-import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case)
+import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case,App)
 import Data.Generics.Uniplate.Data
 import Control.Exception
 import Data.List.Extra
@@ -18,17 +18,18 @@ import Data.Tuple.Extra
 data State2 = State2
     {names :: [(String, Equal)]
     ,applyRhs :: Bool
-    ,applyAt :: Int
+    ,applyAt :: Maybe Int
+    ,applyUnify :: Bool
     }
 
 {-# NOINLINE state2 #-}
 state2 :: IORef State2
-state2 = unsafePerformIO $ newIORef $ State2 [] False 0
+state2 = unsafePerformIO $ newIORef $ State2 [] False (Just 0) False
 
 reset :: IO ()
 reset = do
     resetState
-    writeIORef state2 $ State2 [] False 0
+    writeIORef state2 $ State2 [] False (Just 0) False
 
 define :: String -> IO Equal
 define x = case deflate $ fromParseResult $ parseDecl x of
@@ -68,18 +69,48 @@ rhs = bracket
 
 at :: Int -> IO a -> IO a
 at i = bracket
-    (do s <- readIORef state2; writeIORef state2 s{applyAt=i}; return $ applyAt s)
+    (do s <- readIORef state2; writeIORef state2 s{applyAt=Just i}; return $ applyAt s)
     (\v -> modifyIORef state2 $ \s -> s{applyAt=v})
     . const
 
+ats :: IO a -> IO a
+ats = bracket
+    (do s <- readIORef state2; writeIORef state2 s{applyAt=Nothing}; return $ applyAt s)
+    (\v -> modifyIORef state2 $ \s -> s{applyAt=v})
+    . const
+
+unify :: IO a -> IO a
+unify = bracket
+    (do s <- readIORef state2; writeIORef state2 s{applyUnify=True}; return $ applyUnify s)
+    (\v -> modifyIORef state2 $ \s -> s{applyUnify=v})
+    . const
+
 apply :: Equal -> IO ()
-apply (a :=: b) = do
+apply prf@((fromLams -> (as,a)) :=: b) = do
     State2{..} <- readIORef state2
     let swp = if applyRhs then sym else id
-    withSubgoal $ \(t,reduced) ->
-        case [swp $ ctx b | (val,ctx) <- contextsBi $ swp t, relabel val == relabel a] of
-            new | length new > applyAt -> [(new !! applyAt,reduced)]
-            _ -> error $ "Trying to apply:\n" ++ pretty (a :=: b) ++ "\nTo:\n" ++ pretty t
+    Goal _ ((t,_):_):_ <- getGoals
+    case [ do rewriteExp $ swp $ ctx $ apps (lams as a) $ map snd sub
+              applyProof prf $ swp $ ctx $ apps b $ map snd sub
+         | (val,ctx) <- contextsBi $ swp t, Just sub <- [unifier as a val], applyUnify || all (isVar . snd) sub] of
+        new | length new > fromJust applyAt -> new !! fromJust applyAt
+        _ -> error $ "Trying to apply:\n" ++ pretty (a :=: b) ++ "\nTo:\n" ++ pretty t
+
+isVar Var{} = True; isVar _ = False
+
+-- if you were to subtitute the binding in the first expression, you would come up with something equivalent to the second
+unifier :: [Var] -> Exp -> Exp -> Maybe [(Var, Exp)]
+unifier fv a b = f fv (relabel a) (relabel b)
+    where
+        f fv (Var x) y | x `elem` fv = Just [(x, y)]
+        f fv (Con c1) (Con c2) = Just []
+        f fv (App x1 y1) (App x2 y2) = f fv x1 x2 & f fv y1 y2
+        f fv (relabel -> Lam v1 x1) (relabel -> Lam v2 x2) | v1 == v2 = f (delete v1 fv) x1 x2
+        f fv (Var x) (Var y) | x `notElem` fv, x == y = Just []
+        f _ _ _ = Nothing
+
+        Just a & Just b | let ab = nubOrd $ a ++ b, length (nubOrd $ map fst ab) == length ab = Just ab
+        _ & _ = Nothing
 
 
 unfold :: String -> IO ()

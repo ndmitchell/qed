@@ -32,8 +32,8 @@ parse = fromExp . deflate . fromParseResult . parseExp
 ---------------------------------------------------------------------
 -- TYPE
 
-newtype Var = V {fromVar :: String} deriving (Data,Typeable,Eq,Show)
-newtype Con = C {fromCon :: String} deriving (Data,Typeable,Eq,Show)
+newtype Var = V {fromVar :: String} deriving (Data,Typeable,Eq,Show,Ord)
+newtype Con = C {fromCon :: String} deriving (Data,Typeable,Eq,Show,Ord)
 
 data Exp
     = Var Var
@@ -42,12 +42,12 @@ data Exp
     | Let Var Exp Exp -- non-recursive
     | Lam Var Exp
     | Case Exp [(Pat,Exp)]
-      deriving (Data,Typeable,Show,Eq)
+      deriving (Data,Typeable,Show,Eq,Ord)
 
 data Pat
     = PCon Con [Var]
     | PWild
-      deriving (Data,Typeable,Show,Eq)
+      deriving (Data,Typeable,Show,Eq,Ord)
 
 patVars :: Pat -> [Var]
 patVars (PCon _ vs) = vs

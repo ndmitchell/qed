@@ -64,7 +64,6 @@ main = flip onException dump $ do
     unfold "map"
     rhs $ unfold "map"
     simples
-    simples
 
     goal "\\f g -> map f . map g" "\\f g -> map (f . g)"
     unfold "."
