@@ -22,6 +22,13 @@ import Data.Data
 
 data Reduced = Reduced | Unreduced deriving (Show,Eq)
 
+-- What inductive hypothesis is available to us
+data Induction
+    = Coinduction    -- can prove by coinduction, have generated a constructor
+    | IndEq Int Int  -- position i in the original and j in the current are equal
+    | IndGt Int Int  -- position i in the original is strictly greater than j
+      deriving (Show,Eq)
+
 data Proved = Defined | Proved deriving (Show,Eq)
 
 data State = State
@@ -32,7 +39,7 @@ data State = State
 
 data Equal = Exp :=: Exp deriving (Data,Typeable,Show,Eq)
 
-data Goal = Goal Equal [(Equal, Reduced)] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
+data Goal = Goal Equal [(Equal, [Induction])] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
             deriving Show
 
 sym :: Equal -> Equal
@@ -57,8 +64,8 @@ instance Pretty State where
         [unwords $ "data" : x : "=" : intercalate ["|"] [fromCon y : replicate n "_" | (y,n) <- ys] | (x,ys) <- types] ++
         ["\n" ++ pretty x ++ (if b == Defined then " -- defined" else "") | (x,b) <- proved] ++
         ["\n-- GOAL\n" ++ pretty a ++ concat
-            ["\n-- SUBGOAL" ++ (if reduced == Reduced then " (reduced)" else "") ++ "\n" ++
-             pretty a | (a, reduced) <- xs]
+            ["\n-- SUBGOAL " ++ show induct ++ "\n" ++
+             pretty a | (a, induct) <- xs]
             | Goal a xs <- goals]
 
 
@@ -73,7 +80,7 @@ instance Pretty State where
 
 addGoal :: Exp -> Exp -> IO Equal
 addGoal a b = do
-    withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, Unreduced)] : goals s}
+    withState $ \s -> s{goals = Goal (a :=: b) [(a :=: b, [])] : goals s}
     return $ a :=: b
 
 
@@ -120,7 +127,7 @@ applyProof given@(from :=: to) new = withState $ \s ->
     where
         valid s prf | prf `elem` map fst (proved s) = True
                     | sym prf `elem` map fst (proved s) = True
-                    | Goal t ((_,Reduced):_):_ <- goals s, prf `elem` [t, sym t] = True
+                    | Goal t ((_,ind):_):_ <- goals s, Coinduction `elem` ind, prf `elem` [t, sym t] = True
                     | otherwise = False
 
 
@@ -136,7 +143,7 @@ splitCase :: IO ()
 splitCase = withSubgoal $ \(o@(a :=: b), reduced) ->
     if pattern a /= pattern b then invalid $ "splitCase on different patterns, " ++ pretty o
     else let (vs,v,_) = pattern a
-         in map (, if v `elem` map Var vs then Reduced else reduced) $ zipWith (:=:) (split a) (split b)
+         in map (, [Coinduction | v `elem` map Var vs] ++ reduced) $ zipWith (:=:) (split a) (split b)
     where
         -- distinguishes the salient features
         pattern (fromLams . relabel -> (vs, Case on alts)) = (vs, on, map (patCon . fst) alts)
@@ -148,7 +155,7 @@ splitCase = withSubgoal $ \(o@(a :=: b), reduced) ->
 splitCon :: IO ()
 splitCon = withSubgoal $ \(o@(a :=: b), _) ->
     if pattern a /= pattern b then invalid $ "splitCon on different patterns, " ++ pretty o
-    else map (,Reduced) $ zipWith (:=:) (split a) (split b)
+    else map (,[Coinduction]) $ zipWith (:=:) (split a) (split b)
     where
         pattern (fromLams -> (vs, fromApps -> (Con ctr, args))) = (length vs, ctr, length args)
         pattern x = invalid $ "splitCon not a con, " ++ pretty x
@@ -159,7 +166,7 @@ splitCon = withSubgoal $ \(o@(a :=: b), _) ->
 splitVar :: IO ()
 splitVar = withSubgoal $ \(o@(a :=: b), _) ->
     if pattern a /= pattern b then invalid $ "splitVar on different patterns, " ++ pretty o
-    else map (,Reduced) $ zipWith (:=:) (split a) (split b)
+    else map (,[Coinduction]) $ zipWith (:=:) (split a) (split b)
     where
         pattern (fromLams . relabel -> (vs, fromApps -> (Var v, args))) | v `elem` vs = (vs, v, length args)
         pattern x = invalid $ "splitVar not a free var, " ++ pretty x
@@ -200,5 +207,5 @@ withState f = do
 withGoal :: (Goal -> Goal) -> IO ()
 withGoal f = withState $ \s@State{goals=g:gs} -> s{goals = f g : gs}
 
-withSubgoal :: ((Equal, Reduced) -> [(Equal, Reduced)]) -> IO ()
+withSubgoal :: ((Equal, [Induction]) -> [(Equal, [Induction])]) -> IO ()
 withSubgoal f = withGoal $ \(Goal t (p:ps)) -> Goal t (f p ++ ps)
