@@ -6,7 +6,8 @@ module Core(
     resetState, getState, getProofs, getGoals,
     defineFunction, defineData, addGoal,
     firstGoal, firstSubgoal, rewriteExp, applyProof,
-    splitCase, splitCon, splitVar, removeLam
+    splitCase, splitCon, splitOther, removeLam,
+    cheat
     ) where
 
 import Control.Applicative
@@ -20,13 +21,11 @@ import Data.Generics.Uniplate.Data
 import Data.List.Extra
 import Data.Data
 
-data Reduced = Reduced | Unreduced deriving (Show,Eq)
-
 -- What inductive hypothesis is available to us
 data Induction
-    = Coinduction    -- can prove by coinduction, have generated a constructor
-    | IndEq Int Int  -- position i in the original and j in the current are equal
-    | IndGt Int Int  -- position i in the original is strictly greater than j
+    = Coinduction          -- can prove by coinduction, have generated a constructor and am at the root
+    | InductionEq Int Int  -- position i in the original and j in the current are equal
+    | InductionGt Int Int  -- position i in the original is strictly greater than j
       deriving (Show,Eq)
 
 data Proved = Defined | Proved deriving (Show,Eq)
@@ -39,7 +38,7 @@ data State = State
 
 data Equal = Exp :=: Exp deriving (Data,Typeable,Show,Eq)
 
-data Goal = Goal Equal [(Equal, [Induction])] -- prove the ultimate goal, given a list of subgoals, where True ones have been reduced
+data Goal = Goal Equal [(Equal, [Induction])] -- prove the ultimate goal, given a list of subgoals
             deriving Show
 
 sym :: Equal -> Equal
@@ -125,11 +124,12 @@ applyProof given@(from :=: to) new = withState $ \s ->
                     -> s{goals = Goal r1 ((new, reduced):r2) : r3}
                 | otherwise -> error $ "failed to match proof\n" ++ pretty given ++ "\n" ++ pretty old ++ "\n" ++ pretty new
     where
-        valid s prf | prf `elem` map fst (proved s) = True
-                    | sym prf `elem` map fst (proved s) = True
-                    | Goal t ((_,ind):_):_ <- goals s, Coinduction `elem` ind, prf `elem` [t, sym t] = True
+        valid s prf | prf `elem` map fst (proved s) || sym prf `elem` map fst (proved s) = True
+                    | Goal t ((_,ind):_):_ <- goals s, prf `elem` [t, sym t] =
+                        Coinduction `elem` ind
                     | otherwise = False
 
+-- can only apply the induction in the case that
 
 -- rewrite expressions, must be equivalent under eval
 rewriteExp :: Equal -> IO ()
@@ -163,10 +163,10 @@ splitCon = withSubgoal $ \(o@(a :=: b), _) ->
         split (fromLams -> (vs, fromApps -> (Con ctr, args))) = map (lams vs) args
 
 
-splitVar :: IO ()
-splitVar = withSubgoal $ \(o@(a :=: b), _) ->
+splitOther :: IO ()
+splitOther = withSubgoal $ \(o@(a :=: b), induct) ->
     if pattern a /= pattern b then invalid $ "splitVar on different patterns, " ++ pretty o
-    else map (,[Coinduction]) $ zipWith (:=:) (split a) (split b)
+    else map (,induct) $ zipWith (:=:) (split a) (split b)
     where
         pattern (fromLams . relabel -> (vs, fromApps -> (Var v, args))) | v `elem` vs = (vs, v, length args)
         pattern x = invalid $ "splitVar not a free var, " ++ pretty x
@@ -209,3 +209,7 @@ withGoal f = withState $ \s@State{goals=g:gs} -> s{goals = f g : gs}
 
 withSubgoal :: ((Equal, [Induction]) -> [(Equal, [Induction])]) -> IO ()
 withSubgoal f = withGoal $ \(Goal t (p:ps)) -> Goal t (f p ++ ps)
+
+
+cheat :: IO ()
+cheat = withSubgoal (const [])

@@ -3,6 +3,7 @@
 module Main(main) where
 
 import Proofy
+import Control.Monad
 
 
 main = run $ do
@@ -16,13 +17,12 @@ main = run $ do
     define "foldl f z xs = case xs of [] -> z; x:xs -> foldl f (f z x) xs"
     define "head x = case x of [] -> bottom; x:xs -> x"
     define "flip f x y = f y x"
-    define "last x = case x of [] -> bottom; x:xs -> case xs of [] -> x; a:b -> last xs"
+    define "last x = case x of [] -> bottom; x:xs -> case xs of [] -> x; a:b -> last (a:b)"
     define "reverse = foldl (flip (:)) []"
 
     auto simples
     auto splitCase
     auto splitCon
-    auto splitVar
     auto removeLam
     auto equal
 
@@ -94,13 +94,32 @@ main = run $ do
             unify $ apply appendAssoc
             at 2 $ unfold "++"
             at 2 $ unfold "++"
-        error "todo"
+        apply rev >> unify (apply acc) >> unify (apply appendNil)
+        unfold "rev2" >> rhs (unfold "rev2")
+
+    headAppend <- proof "\\x y z -> head (x ++ (y:z))" "\\x y z -> head (x ++ [y])" $ do
+        unfold "head" >> unfold "++" >> rhs (unfold "head" >> unfold "++")
+
+    proof "\\a b c -> head (reverse (a:b:c))" "\\a b c -> head (reverse (b:c))" $ do
+        apply rev2 >> unfold "rev2" >> unfold "rev2" >> unify (apply appendAssoc)
+        do at 1 $ unfold "++"; at 1 $ unfold "++"; unify $ apply headAppend
+        rhs $ do apply rev2; unfold "rev2"
+
+    proof "\\a b c -> last (a:b:c)" "\\a b c -> last (b:c)" $ do
+        unfold "last"
+
+    headStrict <- proof "\\x -> head x" "\\x -> case x of [] -> head []; a:b -> head (a:b)" $ unauto $ do
+        replicateM_ 3 $ unfold "head"
+        equal
+
+    proof "\\x -> head (reverse x)" "\\x -> last x" $ do
+        apply rev; unify $ apply headStrict; unify $ apply revStrict; unify $ apply $ sym headStrict
+        unfold "head"
+        -- do apply rev; unify $ apply revStrict; unify $ apply headStrict
 
 
 
 {-
-    proof "\\a b c -> last (a:b:c)" "\\a b c -> last (b:c)" $ do
-        unfold "last"
 -}
 
 --    proof "\\a b c ys zs -> head (rev (a:b:c) ys)" "\\a b c ys zs -> head (rev (b:c) zs)" $ do

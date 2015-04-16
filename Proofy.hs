@@ -3,8 +3,9 @@
 module Proofy(
     run, dump, reset,
     define, goal, auto, proof, unauto,
-    unfold, refold, simples, induct, splitCase, splitCon, splitVar, removeLam, equal, unlet,
+    unfold, refold, simples, induct, splitCase, splitCon, splitOther, removeLam, equal, unlet, push,
     apply, rhs, at, ats, unify,
+    cheat, sym
     ) where
 
 
@@ -43,8 +44,12 @@ run act = flip onException dump $ do
 auto :: IO () -> IO ()
 auto x = modifyIORef state2 $ \s -> s{autos = autos s ++ [x]}
 
-unauto :: IO ()
-unauto = modifyIORef state2 $ \s -> s{autos = []}
+unauto :: IO () -> IO ()
+unauto act = do
+    aut <- fmap autos $ readIORef state2
+    modifyIORef state2 $ \s -> s{autos = []}
+    act
+    modifyIORef state2 $ \s -> s{autos = aut}
 
 runAutos :: IO ()
 runAutos = do
@@ -189,6 +194,12 @@ equal = do
 
 unlet :: IO ()
 unlet = do
+    Goal _ ((p, _):_) : _ <- getGoals
+    rewriteExp $ head $ [ctx $ subst [(a,b)] c | (Let a b c, ctx) <- contextsBi p]
+    runAutos
+
+push :: IO ()
+push = do
     Goal _ ((p, _):_) : _ <- getGoals
     rewriteExp $ head $ [ctx $ subst [(a,b)] c | (Let a b c, ctx) <- contextsBi p]
     runAutos
