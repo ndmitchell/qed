@@ -14,6 +14,9 @@ import Data.Tuple.Extra
 rlookup :: Eq a => a -> [(b,a)] -> Maybe b
 rlookup x y = lookup x $ map swap y
 
+Just a =^= Just b = a == b
+_ =^= _ = False
+
 
 subset x y = null $ x \\ y
 
@@ -69,3 +72,7 @@ equivalentOn op name x y
           yy = op y
 
 class Pretty a where pretty :: a -> String
+
+
+twice :: IO a -> IO a
+twice x = x >> x
