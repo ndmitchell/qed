@@ -20,7 +20,6 @@ import Util
 import Language.Haskell.Exts hiding (parse,Exp,Var,sym,Con,Case,App,Let,Pretty(..))
 import Data.Generics.Uniplate.Data
 import Control.Exception.Extra
-import Control.Applicative
 import Data.List.Extra
 import Control.DeepSeq
 import Simplify
@@ -28,7 +27,6 @@ import System.IO.Unsafe
 import Data.IORef
 import Data.Maybe
 import Control.Monad.Extra
-import Data.Either.Extra
 import Data.Data
 
 

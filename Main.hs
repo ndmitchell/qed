@@ -3,7 +3,6 @@
 module Main(main) where
 
 import Proofy
-import Control.Monad
 
 -- coinduction on the execution
 

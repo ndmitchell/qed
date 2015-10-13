@@ -7,7 +7,7 @@ import Data.Data
 import Data.List
 import Language.Haskell.Exts
 import Data.Generics.Uniplate.Data
-import Control.Applicative
+
 
 sl = SrcLoc "" 0 0
 

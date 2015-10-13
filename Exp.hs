@@ -16,7 +16,6 @@ module Exp(
 import Data.Maybe
 import Data.List
 import Data.Data
-import Control.Applicative
 import Control.Monad.State
 import Data.Char
 import Control.Arrow
