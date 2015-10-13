@@ -3,8 +3,8 @@
 module Main(main) where
 
 import Proofy
+import Util
 
--- coinduction on the execution
 
 main = run $ do
     define "data Nil_ a = Nil_ | Cons_ a [a]"
@@ -19,6 +19,24 @@ main = run $ do
     define "flip f x y = f y x"
     define "last x = case x of [] -> bottom; x:xs -> case xs of [] -> x; a:b -> last (a:b)"
     define "reverse = foldl (flip (:)) []"
+    define "repeat x = x : repeat x"
+    define "cycle x = case x of [] -> bottom; a:as -> x ++ cycle x"
+    define "zipWith f xs ys = case xs of [] -> []; x:xs -> case ys of [] -> []; y:ys -> f x y : zipWith f xs ys"
+    define "zip xs ys = case xs of [] -> []; x:xs -> case ys of [] -> []; y:ys -> (x, y) : zip xs ys"
+    define "(&&) x y = case x of True -> y; False -> False"
+    define "not x = case x of True -> False; False -> True"
+    define "catMaybes xs = case xs of [] -> []; x:xs -> case x of Nothing -> catMaybes xs; Just x -> x : catMaybes xs"
+    define "filter f xs = case xs of [] -> []; x:xs -> if f x then x : filter f xs else filter f xs"
+    define "isJust x = case x of Nothing -> False; Just x -> True"
+    define "fromJust x = case x of Nothing -> bottom; Just x -> x"
+    define "mapMaybe f xs = case xs of [] -> []; x:xs -> let rs = mapMaybe f xs in case f x of Nothing -> rs; Just r -> r:rs"
+    define "fst x = case x of (a,b) -> a"
+    define "snd x = case x of (a,b) -> b"
+    define "uncurry f p = f (fst p) (snd p)"
+    define "iterate f x = x : iterate f (f x)"
+    define "concatMap f xs = concat (map f xs)"
+    define "concat = foldr (++) []"
+    define "maybeToList x = case x of Nothing -> []; Just x -> [x]"
 
     proof "\\x -> [] ++ x" "\\x -> x" $ do
         unfold "++"
@@ -39,8 +57,8 @@ main = run $ do
         unfold "id"
         rhs $ unfold "[]"
 
-    proof "\\f g x -> map f (map g x)" "\\f g -> map (\\x -> f (g x))" $ do
-        rhs expand
+    proof "\\f g x -> map f (map g x)" "\\f g x -> map (f . g) x" $ do
+        unfold "."
         recurse
         unfold "map"
 
@@ -48,10 +66,6 @@ main = run $ do
         unfold "."
         twice unlet
         rhs expand
-        recurse
-        unfold "map"
-        unlet
-        unfold "."
 
     proof "\\f -> (($) . f)" "\\f -> f" $ do
         unfold "$"
@@ -71,78 +85,81 @@ main = run $ do
         unlet
         unfold "foldl"
         unlet
-    --    unfold "last"
+        unfold "flip"
+        unsafeReplace "flip (:) [] a" "a"
+        recurse
+        unlet
+        unfold "flip"
+        unsafeReplace "flip (:) a b" "a"
 
+    proof "\\x -> cycle [x]" "repeat" $ do
+        rhs expand
+        recurse
+        unlet
+        twice $ unfold "++"
 
-{-
+    proof "\\f x -> zipWith f (repeat x)" "\\f x -> map (f x)" $ do
+        expand
+        rhs expand
+        recurse
+        unlet
+        unfold "repeat"
 
-    define "rev x y = case x of [] -> y; x:xs -> rev xs (x:y)"
-    rev <- proof "reverse" "\\x -> rev x []" $ do
-        acc <- proof "rev" "\\x y -> foldl (flip (:)) y x" $ do
-            unfold "foldl" >> unfold "rev" >> unlet
-            induct
-            at 2 $ unfold "flip"
-        unfold "reverse" >> apply acc
-        unfold "foldl" >> rhs (unfold "foldl")
+    proof "\\x y -> if x then False else y" "\\x y -> not x && y" $ do
+        unfold "&&"
+        unfold "not"
 
-    revStrict <- proof "\\xs ys -> rev xs ys" "\\x ys -> case x of [] -> ys; x:xs -> rev (x:xs) ys" $ do
-        unfold "rev" >> rhs (unfold "rev")
+    proof "map fromJust . filter isJust" "catMaybes" $ do
+        rhs expand
+        unfold "."
+        unfold "map"
+        unlet
+        recurse
+        unfold "isJust"
+        unfold "fromJust"
+        unfold "map"
 
-    define "rev2 x = case x of [] -> []; x:xs -> rev2 xs ++ [x]"
+    proof "mapMaybe id" "catMaybes" $ do
+        expand
+        rhs expand
+        recurse
+        unfold "id"
 
-    rev2 <- proof "reverse" "rev2" $ do
-        acc <- proof "\\a b -> rev a b" "\\a b -> rev2 a ++ b" $ do
-            unfold "rev" >> unfold "rev2" >> unfold "++" >> unlet
-            unify induct
-            unify $ refold "++"
-            unify $ apply appendAssoc
-            at 2 $ unfold "++"
-            at 2 $ unfold "++"
-        apply rev >> unify (apply acc) >> unify (apply appendNil)
-        unfold "rev2" >> rhs (unfold "rev2")
+    proof "\\f x -> map f (repeat x)" "\\f x -> repeat (f x)" $ do
+        recurse
+        unfold "repeat"
+        unlet
 
-    headAppend <- proof "\\x y z -> head (x ++ (y:z))" "\\x y z -> head (x ++ [y])" $ do
-        unfold "head" >> unfold "++" >> rhs (unfold "head" >> unfold "++")
+    proof "\\f x y -> map (uncurry f) (zip x y)" "\\f x y -> zipWith f x y" $ do
+        recurse
+        unlet
+        unfold "zip"
+        unfold "uncurry"
+        unlet
+        unfold "fst"
+        unfold "snd"
 
-    proof "\\a b c -> head (reverse (a:b:c))" "\\a b c -> head (reverse (b:c))" $ do
-        apply rev2 >> unfold "rev2" >> unfold "rev2" >> unify (apply appendAssoc)
-        do at 1 $ unfold "++"; at 1 $ unfold "++"; unify $ apply headAppend
-        rhs $ do apply rev2; unfold "rev2"
+    proof "iterate id" "repeat" $ do
+        expand
+        rhs expand
+        recurse
+        ind 1 $ unfold "id"
 
-    proof "\\a b c -> last (a:b:c)" "\\a b c -> last (b:c)" $ do
-        unfold "last"
+    proof "\\f x -> catMaybes (map f x)" "\\f x -> mapMaybe f x" $ do
+        recurse
+        unfold "map"
 
-    headStrict <- proof "\\x -> head x" "\\x -> case x of [] -> head []; a:b -> head (a:b)" $ unauto $ do
-        replicateM_ 3 $ unfold "head"
-        equal
+    proof "concatMap maybeToList" "catMaybes" $ do
+        unfold "concatMap"
+        unfold "concat"
+        rhs expand
+        recurse
+        unfold "map"
+        unfold "++"
+        unfold "maybeToList"
+        unfold "++"
 
-    proof "\\x -> head (reverse x)" "\\x -> last x" $ do
-        apply rev; unify $ apply headStrict; unify $ apply revStrict; unify $ apply $ sym headStrict
-        unfold "head"
-        -- do apply rev; unify $ apply revStrict; unify $ apply headStrict
-
-
-
-{-
--}
-
---    proof "\\a b c ys zs -> head (rev (a:b:c) ys)" "\\a b c ys zs -> head (rev (b:c) zs)" $ do
-  --      unfold "rev"
-
-
---    goal "\\xs ys zs -> rev (x:ys) zs" "\\xs ys zs -> rev xs [] ++ ys" -- $ do
-
-    -- unfold "++" >> unfold "rev" >> rhs (unify $ apply revStrict) >> rhs (unfold "rev")
-
---    goal "\\x xs -> reverse (x:xs)" "\\x xs -> reverse xs ++ [x]"
---    unify $ apply revStrict >> rhs (apply revStrict) >> apply rev >> apply rev >> unfold "++" >> unfold "rev" >> unfold "rev"  --  unfold "rev" >> unfold "++" >> rhs (unfold "rev")
-
---    goal "\\x y -> reverse x ++ reverse y" "\\x y -> reverse (y ++ x)"
-    return ()
-
---    goal "\\x -> head (reverse x)" "\\x -> last x"
---    $ do
---        unfold "head" >> unfold "reverse" >> unfold "last" >> unfold "foldl" >> unfold "flip" >> unfold "foldl"
-  --      return ()
-
--}
+    proof "\\f g x -> concatMap f (map g x)" "\\f g x -> concatMap (f . g) x" $ do
+        twice $ unfold "concatMap"
+        twice $ unfold "concat"
+        divide
