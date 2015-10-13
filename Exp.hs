@@ -7,7 +7,7 @@ module Exp(
     patCon, patVars,
     caseCon,
     prettys, pretty,
-    vars, varsP, free, subst, unsubst, relabel, fresh,
+    vars, varsP, free, subst, unsubst, relabel, relabelAvoid, fresh,
     eval, equivalent,
     fromHSE, fromExp, fromName, toHSE, parse,
     simplifyExp
@@ -139,8 +139,12 @@ subst ren e = case e of
     x -> x
     where f del x = subst (filter (flip notElem del . fst) ren) x
 
+
 relabel :: Exp -> Exp
-relabel x = evalState (f [] x) (fresh $ free x)
+relabel x = relabelAvoid (free x) x
+
+relabelAvoid :: [Var] -> Exp -> Exp
+relabelAvoid xs x = evalState (f [] x) (fresh xs)
     where
         f :: [(Var,Var)] -> Exp -> State [Var] Exp
         f mp (Lam v x) = do i <- var; Lam i <$> f ((v,i):mp) x
