@@ -22,7 +22,6 @@ import Data.Generics.Uniplate.Data
 import Control.Exception.Extra
 import Data.List.Extra
 import Control.DeepSeq
-import Simplify
 import System.IO.Unsafe
 import Data.IORef
 import Data.Maybe
@@ -156,7 +155,7 @@ cheat = modifyState $ \s -> s{goal = []}
 
 autoSimplify :: IO ()
 autoSimplify = modifyState $ \s ->
-    s{goal = [Goal pre (simplify a :=: simplify b) | Goal pre (a :=: b) <- goal s]}
+    s{goal = [Goal pre (simplifyExp a :=: simplifyExp b) | Goal pre (a :=: b) <- goal s]}
 
 autoLaw :: IO ()
 autoLaw = modifyState $ \s -> s{goal = filter (not . taut (proved s)) $ goal s}
@@ -213,7 +212,7 @@ recurse = auto $ modifyState $ \s ->
     let Goal pre (a:=:b):gs = goal s
     in case (step s a, step s b) of
         (Nothing, Nothing) -> error $ "Cannot step\n" ++ pretty a ++ "\n" ++ pretty b
-        (aa, bb) -> s{goal = Goal ((simplify a:=:simplify b) : pre) (fromMaybe a aa :=: fromMaybe b bb):gs}
+        (aa, bb) -> s{goal = Goal ((simplifyExp a:=: simplifyExp b) : pre) (fromMaybe a aa :=: fromMaybe b bb):gs}
 
 
 
@@ -245,9 +244,9 @@ appeal (a :=: b) (aa :=: bb) = a == aa && b == bb {- f a aa =^= f b bb
 norm :: Equal -> Equal
 norm (a :=: b) = (f va xa :=: f vb xb)
     where
-        (va, xa) = fromLams $ simplify a
-        (vb, xb) = fromLams $ simplify b
+        (va, xa) = fromLams $ simplifyExp a
+        (vb, xb) = fromLams $ simplifyExp b
         n = length $ takeWhile (uncurry (==)) $ zip va vb
         com = nub (free xa ++ free xb) `intersect` take n va
 
-        f vs x = simplify $ lams (com ++ (vs \\ com)) x
+        f vs x = simplifyExp $ lams (com ++ (vs \\ com)) x
