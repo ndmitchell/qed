@@ -93,7 +93,7 @@ cheat = modifyState $ \s -> s{goal = []}
 
 define :: String -> IO ()
 define x = case deflate $ fromParseResult $ parseDecl x of
-    DataDecl _ _ _ name _ ctrs [] -> do
+    DataDecl _ _ _ name _ ctrs _ -> do
         let f (fromName -> x) = fromMaybe x $ lookup x [("Nil_","[]"),("Cons_",":")]
         modifyState $ \s -> s{types = (f name, [(C $ f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs]) : types s}
     PatBind _ (PVar x) (UnGuardedRhs bod) (BDecls []) -> do
