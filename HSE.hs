@@ -33,8 +33,8 @@ spec (TupleCon Boxed i) = UnQual $ Ident $ "(" ++ replicate (i-1) ',' ++ ")"
 spec x = Special x
 
 deflateDecl :: Decl -> Decl
-deflateDecl (FunBind [Match sl f vars Nothing (UnGuardedRhs x) (BDecls [])]) =
-    PatBind sl (PVar f) (UnGuardedRhs $ Lambda sl vars x) (BDecls [])
+deflateDecl (FunBind [Match sl f vars Nothing (UnGuardedRhs x) decs]) =
+    PatBind sl (PVar f) (UnGuardedRhs $ Lambda sl vars $ Let decs x) (BDecls [])
 deflateDecl x = x
 
 deflateQName :: QName -> QName
