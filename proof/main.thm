@@ -1,0 +1,41 @@
+
+law Monoid
+    forall a . a <> mempty = a
+    forall a . mempty <> a = a
+    forall a b c . a <> (b <> c) = (a <> b) <> c
+
+law Functor
+    forall . fmap id = id
+    forall f g . fmap f . fmap g = fmap (f . g)
+
+forall x . [] ++ x = x
+    unfold ++
+
+forall x . x ++ [] = x
+    recurse
+    rhs unfold []
+
+forall x y z . (x ++ y) ++ z = x ++ (y ++ z)
+    recurse
+    both unfold ++
+
+prove Monoid []
+    <> = ++
+    mempty = []
+
+forall . map id = id
+    both unfold id
+    lhs expand
+    recurse
+    rhs unfold []
+
+forall f g . map f . map g = map (f . g)
+    unfold "."
+    twice unlet
+    rhs expand
+
+prove Functor []
+    fmap = map
+
+forall x y . (if x then False else y) = not x && y
+    repeat unfold
