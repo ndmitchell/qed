@@ -95,9 +95,11 @@ define :: String -> IO ()
 define x = case deflate $ fromParseResult $ parseDecl x of
     DataDecl _ _ _ name _ ctrs _ -> do
         let f (fromName -> x) = fromMaybe x $ lookup x [("Nil_","[]"),("Cons_",":")]
-        modifyState $ \s -> s{types = (f name, [(C $ f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs]) : types s}
+        modifyState $ \s -> s{types = types s ++ [(f name, [(C $ f a,length b) | (QualConDecl _ _ _ (ConDecl a b)) <- ctrs])]}
     PatBind _ (PVar x) (UnGuardedRhs bod) (BDecls []) -> do
-        modifyState $ \s -> s{defined = (V $ fromName x, fromExp bod) : defined s}
+        let res = fromExp bod
+        evaluate $ show res
+        modifyState $ \s -> s{defined = defined s ++ [(V $ fromName x, res)]}
     x -> error $ "Define not handled, " ++ show x
 
 proof :: String -> String -> IO () -> IO (IO ())
