@@ -47,7 +47,9 @@ deflateQName x = x
 deflateExp :: Exp -> Exp
 deflateExp (Lambda sl ps x) | length ps /= 1 = foldr (\p x -> Lambda sl [p] x) x ps
 deflateExp (LeftSection x (QVarOp y)) = App (Var y) x
+deflateExp (LeftSection x (QConOp y)) = App (Con y) x
 deflateExp (RightSection (QVarOp y) x) = Paren $ Var (UnQual $ Ident "flip") `App` Var y `App` Paren x
+deflateExp (RightSection (QConOp y) x) = Paren $ Var (UnQual $ Ident "flip") `App` Con y `App` Paren x
 deflateExp (List []) = Con $ spec ListCon
 deflateExp (List (x:xs)) = Paren $ Con (spec Cons) `App` Paren x `App` deflateExp (List xs)
 deflateExp (Tuple b xs) = foldl App (Con $ spec $ TupleCon b $ length xs) xs
