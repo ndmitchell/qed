@@ -9,6 +9,9 @@ import Language.Haskell.Exts
 import Data.Generics.Uniplate.Data
 
 
+-- Turn on to have better list comp desugaring in terms of mapMaybe for common cases
+fasterListComp = False
+
 sl = SrcLoc "" 0 0
 
 names :: Data a => a -> [String]
@@ -73,8 +76,8 @@ deflateExp (ListComp res xs) = lst xs
         may _ = Nothing
 
         -- optimised shortcuts (use map or mapMaybe)
-        lst (QualStmt (Generator _ p e):[]) | irrefutable p = Var (UnQual $ Ident "map") `App` deflateExp (Lambda sl [p] res) `App` e
-        lst o@(QualStmt (Generator _ p e):xs) | Just ans <- may xs =
+        lst (QualStmt (Generator _ p e):[]) | fasterListComp, irrefutable p = Var (UnQual $ Ident "map") `App` deflateExp (Lambda sl [p] res) `App` e
+        lst o@(QualStmt (Generator _ p e):xs) | fasterListComp, Just ans <- may xs =
             Var (UnQual $ Ident "mapMaybe") `App` deflateExp (Lambda sl [PVar new] $ bod ans) `App` e
             where new:_ = map Ident $ fresh $ names $ ListComp res o
                   bod ans = deflateExp $ Case (Var $ UnQual new) $
