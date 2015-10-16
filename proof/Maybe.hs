@@ -12,35 +12,45 @@ module Maybe(
 instance Eq a => Eq (Maybe a) where
     (==) = eqMaybe
 
-eqMaybe (Just a) (Just b) = a == b
-eqMaybe Nothing == Nothing = True
-eqMaybe _ _ = False
+eqMaybe x y = case x of
+    Nothing -> case y of
+        Nothing -> True
+        Just _ -> False
+    Just x -> case y of
+        Nothing -> False
+        Just y -> x == y
 
 isJust                 :: Maybe a -> Bool
-isJust (Just a)        =  True
-isJust Nothing         =  False
+isJust x = case x of
+    (Just a)        -> True
+    Nothing         ->  False
 
 isNothing          :: Maybe a -> Bool
 isNothing          =  not . isJust
 
 fromJust               :: Maybe a -> a
-fromJust (Just a)      =  a
-fromJust Nothing       =  error "Maybe.fromJust: Nothing"
+fromJust x = case x of
+    (Just a)      ->  a
+    Nothing       ->  error "Maybe.fromJust: Nothing"
 
 fromMaybe              :: a -> Maybe a -> a
-fromMaybe d Nothing    =  d
-fromMaybe d (Just a)   =  a
+fromMaybe d x = case x of
+    Nothing    ->  d
+    Just a      ->  a
 
 maybeToList            :: Maybe a -> [a]
-maybeToList Nothing    =  []
-maybeToList (Just a)   =  [a]
+maybeToList x = case x of
+    Nothing -> []
+    Just a -> [a]
 
 listToMaybe            :: [a] -> Maybe a
-listToMaybe []         =  Nothing
-listToMaybe (a:_)      =  Just a
+listToMaybe = case x of
+    []         ->  Nothing
+    (a:_)      ->  Just a
  
 catMaybes              :: [Maybe a] -> [a]
 catMaybes ms           =  [ m | Just m <- ms ]
+-- concatMap (\x -> case x of Nothing -> []; Just m -> [m]) ms
 
 mapMaybe               :: (a -> Maybe b) -> [a] -> [b]
 mapMaybe f             =  catMaybes . map f

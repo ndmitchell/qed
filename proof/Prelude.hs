@@ -627,17 +627,17 @@ infix  4  `elem`, `notElem`
 -- Map and append
 
 map :: (a -> b) -> [a] -> [b]
-map f x = case x of [] -> []; (x:xs) = f x : map f xs
+map f x = case x of [] -> []; (x:xs) -> f x : map f xs
 
 
 (++) :: [a] -> [a] -> [a]
-xs ++ ys = case xs of [] -> []     ++ ys = ys; (x:xs) -> x : (xs ++ ys)
+xs ++ ys = case xs of [] -> ys; (x:xs) -> x : (xs ++ ys)
 
 
 filter :: (a -> Bool) -> [a] -> [a]
-filter p []                 = []
-filter p (x:xs) | p x       = x : filter p xs
-                | otherwise = filter p xs
+filter p xs = case xs of
+     [] -> []
+     x:xs -> if p x then x : filter p xs else  filter p xs
 
 
 concat :: [[a]] -> [a]
@@ -654,44 +654,50 @@ concatMap f = concat . map f
 
 
 head             :: [a] -> a
-head (x:_)       =  x
-head []          =  error "Prelude.head: empty list"
+head x = case x of
+    (x:_)       ->  x
+    []          ->  error "Prelude.head: empty list"
 
 
 tail             :: [a] -> [a]
-tail (_:xs)      =  xs
-tail []          =  error "Prelude.tail: empty list"
+tail x = case x of
+    (_:xs)      -> xs
+    []          ->  error "Prelude.tail: empty list"
 
 
 last             :: [a] -> a
-last [x]         =  x
-last (_:xs)      =  last xs
-last []          =  error "Prelude.last: empty list"
+last x = case x of
+    [] -> error "Prelude.last: empty list"
+    x:xs -> case xs of
+        [] -> x
+        _:_ -> last xs
 
 
 init             :: [a] -> [a]
-init [x]         =  []
-init (x:xs)      =  x : init xs
-init []          =  error "Prelude.init: empty list"
+init x = case x of
+    [] -> error "Prelude.init: empty list"
+    x:xs -> case xs of
+        [] -> []
+        _:_ -> x : init xs
 
 
 null             :: [a] -> Bool
-null []          =  True
-null (_:_)       =  False
+null x = case x of [] -> True; (_:_) ->  False
 
 -- length returns the length of a finite list as an Int.
 
 length           :: [a] -> Int
-length []        =  0
-length (_:l)     =  1 + length l
+length xs = case xs of
+    [] -> 0
+    _:l -> 1 + length l
 
 -- List index (subscript) operator, 0-origin
 
 (!!)                :: [a] -> Int -> a
-xs     !! n | n < 0 =  error "Prelude.!!: negative index"
-[]     !! _         =  error "Prelude.!!: index too large"
-(x:_)  !! 0         =  x
-(_:xs) !! n         =  xs !! (n-1)
+(!!) xs n = if n < 0 then error "Prelude.!!: negative index"
+       else case x of
+                [] -> error "Prelude.!!: index too large"
+                x:xs -> if n == 0 then x else xs !! (n-1)
 
 -- foldl, applied to a binary operator, a starting value (typically the
 -- left-identity of the operator), and a list, reduces the list using
@@ -707,13 +713,15 @@ xs     !! n | n < 0 =  error "Prelude.!!: negative index"
 
 
 foldl            :: (a -> b -> a) -> a -> [b] -> a
-foldl f z []     =  z
-foldl f z (x:xs) =  foldl f (f z x) xs
+foldl f z x = case x of
+    []     ->  z
+    (x:xs) ->  foldl f (f z x) xs
 
 
 foldl1           :: (a -> a -> a) -> [a] -> a
-foldl1 f (x:xs)  =  foldl f x xs
-foldl1 _ []      =  error "Prelude.foldl1: empty list"
+foldl1 f x = case x of
+    [] -> error "Prelude.foldl1: empty list"
+    (x:xs)  ->  foldl f x xs
 
 
 scanl            :: (a -> b -> a) -> a -> [b] -> [a]
@@ -723,35 +731,39 @@ scanl f q xs     =  q : (case xs of
 
 
 scanl1           :: (a -> a -> a) -> [a] -> [a]
-scanl1 f (x:xs)  =  scanl f x xs
-scanl1 _ []      =  []
+scanl1 f x = case x of
+    [] -> []
+    (x:xs)  ->  scanl f x xs
 
 -- foldr, foldr1, scanr, and scanr1 are the right-to-left duals of the
 -- above functions.
 
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
-foldr f z []     =  z
-foldr f z (x:xs) =  f x (foldr f z xs)
+foldr f z x = case x of
+    []     ->  z
+    (x:xs) ->  f x (foldr f z xs)
 
 
 foldr1           :: (a -> a -> a) -> [a] -> a
-foldr1 f [x]     =  x
-foldr1 f (x:xs)  =  f x (foldr1 f xs)
-foldr1 _ []      =  error "Prelude.foldr1: empty list"
+foldr1 f x = case x of
+    [] -> error "Prelude.foldr1: empty list"
+    x:xs -> case xs of
+        [] -> x
+        _:_ -> f x (foldr1 f xs)
 
 
 scanr             :: (a -> b -> b) -> b -> [a] -> [b]
-scanr f q0 []     =  [q0]
-scanr f q0 (x:xs) =  f x q : qs
-                     where qs@(q:_) = scanr f q0 xs 
-
+scanr f q0 x = case x of
+    []     ->  [q0]
+    (x:xs) -> let qs = scanr f q0 xs in f x (head qs) : qs
 
 scanr1          :: (a -> a -> a) -> [a] -> [a]
-scanr1 f []     =  []
-scanr1 f [x]    =  [x]
-scanr1 f (x:xs) =  f x q : qs
-                   where qs@(q:_) = scanr1 f xs 
+scanr1 f x = case x of
+    []     ->  []
+    x:xs   -> case xs of
+        [] -> [x]
+        _:_ -> let qs = scanr1 f xs in f x (head qs) : qs
 
 -- iterate f x returns an infinite list of repeated applications of f to x:
 -- iterate f x == [x, f x, f (f x), ...]
@@ -762,7 +774,7 @@ iterate f x      =  x : iterate f (f x)
 -- repeat x is an infinite list, with x the value of every element.
 
 repeat           :: a -> [a]
-repeat x         =  xs where xs = x:xs
+repeat x         =  x : repeat xs
 
 -- replicate n x is a list of length n with x the value of every element
 
@@ -775,8 +787,9 @@ replicate n x    =  take n (repeat x)
 
 
 cycle            :: [a] -> [a]
-cycle []         =  error "Prelude.cycle: empty list"
-cycle xs         =  xs' where xs' = xs ++ xs'
+cycle xs = case xs of
+    []         ->  error "Prelude.cycle: empty list"
+    _:_    -> xs ++ cycle xs
 
 -- take n, applied to a list xs, returns the prefix of xs of length n,
 -- or xs itself if n > length xs.  drop n xs returns the suffix of xs
@@ -785,15 +798,17 @@ cycle xs         =  xs' where xs' = xs ++ xs'
 
 
 take                   :: Int -> [a] -> [a]
-take n _      | n <= 0 =  []
-take _ []              =  []
-take n (x:xs)          =  x : take (n-1) xs
+take n xs = if n <= 0 then  []
+            else case xs of
+                    [] -> []
+                    x:xs -> x : take (n-1) xs
 
 
 drop                   :: Int -> [a] -> [a]
-drop n xs     | n <= 0 =  xs
-drop _ []              =  []
-drop n (_:xs)          =  drop (n-1) xs
+drop n xs = if n <= 0 then xs
+            else case xs of
+                     [] -> []
+                     x:xs -> drop (n-1) xs
 
 
 splitAt                  :: Int -> [a] -> ([a],[a])
@@ -806,25 +821,23 @@ splitAt n xs             =  (take n xs, drop n xs)
 
 
 takeWhile               :: (a -> Bool) -> [a] -> [a]
-takeWhile p []          =  []
-takeWhile p (x:xs) 
-            | p x       =  x : takeWhile p xs
-            | otherwise =  []
+takeWhile p xs = case xs of
+    []          ->  []
+    x:xs        -> if p x then  x : takeWhile p xs else []
 
 
 dropWhile               :: (a -> Bool) -> [a] -> [a]
-dropWhile p []          =  []
-dropWhile p xs@(x:xs')
-            | p x       =  dropWhile p xs'
-            | otherwise =  xs
+dropWhile p xs = case xs of
+    []          ->  []
+    x:xs' -> if p x then  dropWhile p xs' else  xs
 
 
 span, break             :: (a -> Bool) -> [a] -> ([a],[a])
-span p []            = ([],[])
-span p xs@(x:xs') 
-            | p x       =  (x:ys,zs) 
-            | otherwise =  ([],xs)
-                           where (ys,zs) = span p xs'
+span p xs = case xs of
+    []            -> ([],[])
+    x:xs'  -> let ys_zs = span p xs'
+              in if p x then (x:fst ys_zs, snd ys_zs)
+                        else ([],xs)
 
 break p                 =  span (not . p)
 
@@ -837,18 +850,18 @@ break p                 =  span (not . p)
 
 
 lines            :: String -> [String]
-lines ""         =  []
-lines s          =  let (l, s') = break (== '\n') s
-                      in  l : case s' of
+lines s          =  if null s then [] else let ls = break (== '\n') s
+                      in  fst ls : case snd ls of
                                 []      -> []
                                 (_:s'') -> lines s''
 
 
 words            :: String -> [String]
-words s          =  case dropWhile Char.isSpace s of
-                      "" -> []
-                      s' -> w : words s''
-                            where (w, s'') = break Char.isSpace s'
+words s          =  let s' = dropWhile isSpace s  in
+                    case s' of
+                      [] -> []
+                      _:_ -> let ws = break isSpace s' in
+                             fst ws : words (snd ws)
 
 
 unlines          :: [String] -> String
@@ -856,8 +869,9 @@ unlines          =  concatMap (++ "\n")
 
 
 unwords          :: [String] -> String
-unwords []       =  ""
-unwords ws       =  foldr1 (\w s -> w ++ ' ':s) ws
+unwords ws = case ws of
+     []       ->  ""
+     _:_ -> foldr1 (\w s -> w ++ ' ':s) ws
 
 -- reverse xs returns the elements of xs in reverse order.  xs must be finite.
 
@@ -890,10 +904,10 @@ notElem x        =  all (/= x)
 -- lookup key assocs looks up a key in an association list.
 
 lookup           :: (Eq a) => a -> [(a,b)] -> Maybe b
-lookup key []    =  Nothing
-lookup key ((x,y):xys)
-    | key == x   =  Just y
-    | otherwise  =  lookup key xys
+lookup key xs = case xs of
+    [] -> Nothing
+    xy:xys -> case xy of
+        (x,y) -> if key == x then Just y else lookup key xys
 
 -- sum and product compute the sum or product of a finite list of numbers.
 
@@ -905,11 +919,13 @@ product          =  foldl (*) 1
 -- which must be non-empty, finite, and of an ordered type.
 
 maximum, minimum :: (Ord a) => [a] -> a
-maximum []       =  error "Prelude.maximum: empty list"
-maximum xs       =  foldl1 max xs
+maximum xs = case xs of
+    [] -> error "Prelude.maximum: empty list"
+    _:_ -> foldl1 max xs
 
-minimum []       =  error "Prelude.minimum: empty list"
-minimum xs       =  foldl1 min xs
+minimum xs = case xs of
+    [] ->  error "Prelude.minimum: empty list"
+    _:_ -> foldl1 min xs
 
 -- zip takes two lists and returns a list of corresponding pairs.  If one
 -- input list is short, excess elements of the longer list are discarded.
@@ -931,27 +947,38 @@ zip3             =  zipWith3 (,,)
 
 
 zipWith          :: (a->b->c) -> [a]->[b]->[c]
-zipWith z (a:as) (b:bs)
-                 =  z a b : zipWith z as bs
-zipWith _ _ _    =  []
+zipWith z as bs =
+    case as of
+        [] -> []
+        a:as -> case bs of
+            [] -> []
+            b:bs -> z a b : zipWith z as bs
 
 
 zipWith3         :: (a->b->c->d) -> [a]->[b]->[c]->[d]
-zipWith3 z (a:as) (b:bs) (c:cs)
-                 =  z a b c : zipWith3 z as bs cs
-zipWith3 _ _ _ _ =  []
+zipWith3 z as bs cs = case as of
+    [] -> []
+    a:as -> case bs of
+        [] -> []
+        b:bs -> case cs of
+            [] -> []
+            c:cs -> z a b c : zipWith3 z as bs cs
 
 
 -- unzip transforms a list of pairs into a pair of lists.  
 
 
 unzip            :: [(a,b)] -> ([a],[b])
-unzip            =  foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([],[])
+unzip            =  foldr (\ab asbs -> case ab of (a,b) -> (a:fst asbs,b:snd asbs)) ([],[])
 
 
 unzip3           :: [(a,b,c)] -> ([a],[b],[c])
-unzip3           =  foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs))
+unzip3           =  foldr (\abc o -> case abc of (a,b,c) -> (a:fst3 o,b:snd3 o,c:thd3 o))
                           ([],[],[])
+
+fst3 x = case x of (x,_,_) -> x
+snd3 x = case x of (_,x,_) -> x
+thd3 x = case x of (_,_,x) -> x
 
 
 type  ReadS a  = String -> [(a,String)]
@@ -963,36 +990,11 @@ class  Read a  where
     readsPrec        :: Int -> ReadS a
     readList         :: ReadS [a]
 
-        -- Minimal complete definition:
-        --      readsPrec
-    readList         = readParen False (\r -> [pr | ("[",s)  <- lex r,
-                                                    pr       <- readl s])
-                       where readl  s = [([],t)   | ("]",t)  <- lex s] ++
-                                        [(x:xs,u) | (x,t)    <- reads s,
-                                                    (xs,u)   <- readl' t]
-                             readl' s = [([],t)   | ("]",t)  <- lex s] ++
-                                        [(x:xs,v) | (",",t)  <- lex s,
-                                                    (x,u)    <- reads t,
-                                                    (xs,v)   <- readl' u]
-
 
 class  Show a  where
     showsPrec        :: Int -> a -> ShowS
     show             :: a -> String 
     showList         :: [a] -> ShowS
-
-        -- Mimimal complete definition:
-        --      show or showsPrec
-    showsPrec _ x s   = show x ++ s
-
-    show x            = showsPrec 0 x ""
-
-    showList []       = showString "[]"
-    showList (x:xs)   = showChar '[' . shows x . showl xs
-                        where showl []     = showChar ']'
-                              showl (x:xs) = showChar ',' . shows x .
-                                             showl xs
-
 
 reads            :: (Read a) => ReadS a
 reads            =  readsPrec 0
@@ -1000,13 +1002,6 @@ reads            =  readsPrec 0
 
 shows            :: (Show a) => a -> ShowS
 shows            =  showsPrec 0
-
-
-read             :: (Read a) => String -> a
-read s           =  case [x | (x,t) <- reads s, ("","") <- lex t] of
-                         [x] -> x
-                         []  -> error "Prelude.read: no parse"
-                         _   -> error "Prelude.read: ambiguous parse"
 
 
 showChar         :: Char -> ShowS
@@ -1021,61 +1016,11 @@ showParen        :: Bool -> ShowS -> ShowS
 showParen b p    =  if b then showChar '(' . p . showChar ')' else p
 
 
-readParen        :: Bool -> ReadS a -> ReadS a
-readParen b g    =  if b then mandatory else optional
-                    where optional r  = g r ++ mandatory r
-                          mandatory r = [(x,u) | ("(",s) <- lex r,
-                                                 (x,t)   <- optional s,
-                                                 (")",u) <- lex t    ]
-
 -- This lexer is not completely faithful to the Haskell lexical syntax.
 -- Current limitations:
 --    Qualified names are not handled properly
 --    Octal and hexidecimal numerics are not recognized as a single token
 --    Comments are not treated properly
-
-
-lex              :: ReadS String
-lex ""           =  [("","")]
-lex (c:s)
-   | isSpace c   =  lex (dropWhile isSpace s)
-lex ('\'':s)     =  [('\'':ch++"'", t) | (ch,'\'':t)  <- lexLitChar s,
-                                         ch /= "'" ]
-lex ('"':s)      =  [('"':str, t)      | (str,t) <- lexString s]
-                    where
-                    lexString ('"':s) = [("\"",s)]
-                    lexString s = [(ch++str, u)
-                                         | (ch,t)  <- lexStrItem s,
-                                           (str,u) <- lexString t  ]
-
-                    lexStrItem ('\\':'&':s) =  [("\\&",s)]
-                    lexStrItem ('\\':c:s) | isSpace c
-                                           =  [("\\&",t) | 
-                                               '\\':t <-
-                                                   [dropWhile isSpace s]]
-                    lexStrItem s           =  lexLitChar s
-
-lex (c:s) | isSingle c = [([c],s)]
-          | isSym c    = [(c:sym,t)       | (sym,t) <- [span isSym s]]
-          | isAlpha c  = [(c:nam,t)       | (nam,t) <- [span isIdChar s]]
-          | isDigit c  = [(c:ds++fe,t)    | (ds,s)  <- [span isDigit s],
-                                            (fe,t)  <- lexFracExp s     ]
-          | otherwise  = []    -- bad character
-             where
-              isSingle c =  c `elem` ",;()[]{}_`"
-              isSym c    =  c `elem` "!@#$%&*+./<=>?\\^|:-~"
-              isIdChar c =  isAlphaNum c || c `elem` "_'"
-
-              lexFracExp ('.':c:cs) | isDigit c
-                            = [('.':ds++e,u) | (ds,t) <- lexDigits (c:cs),
-                                               (e,u)  <- lexExp t]
-              lexFracExp s  = lexExp s
-
-              lexExp (e:s) | e `elem` "eE"
-                       = [(e:c:ds,u) | (c:t)  <- [s], c `elem` "+-",
-                                                 (ds,u) <- lexDigits t] ++
-                         [(e:ds,t)   | (ds,t) <- lexDigits s]
-              lexExp s = [("",s)]
 
 
 instance  Show Int  where
@@ -1203,8 +1148,7 @@ putStr s   =  mapM_ putChar s
    
 
 putStrLn   :: String -> IO ()
-putStrLn s =  do putStr s
-                 putStr "\n"
+putStrLn s =   putStr s >> putStr "\n"
    
 
 print      :: Show a => a -> IO ()
@@ -1216,9 +1160,9 @@ getChar    =  primGetChar
    
 
 getLine    :: IO String
-getLine    =  do c <- getChar
+getLine    =  getChar >>= \c -> 
                  if c == '\n' then return "" else 
-                    do s <- getLine
+                    getLine >>= \s -> 
                        return (c:s)
             
 
@@ -1228,9 +1172,9 @@ getContents =  primGetContents
 
 interact    ::  (String -> String) -> IO ()
 -- The hSetBuffering ensures the expected interactive behaviour
-interact f  =  do hSetBuffering stdin  NoBuffering
-                  hSetBuffering stdout NoBuffering
-                  s <- getContents
+interact f  =  hSetBuffering stdin  NoBuffering >>
+                  hSetBuffering stdout NoBuffering >>
+                  getContents >>= \s ->
                   putStr (f s)
 
 
@@ -1247,14 +1191,8 @@ appendFile =  primAppendFile
 
   -- raises an exception instead of an error
 
-readIO   :: Read a => String -> IO a
-readIO s =  case [x | (x,t) <- reads s, ("","") <- lex t] of
-              [x] -> return x
-              []  -> ioError (userError "Prelude.readIO: no parse")
-              _   -> ioError (userError "Prelude.readIO: ambiguous parse")
-
 
 readLn :: Read a => IO a
-readLn =  do l <- getLine
-             r <- readIO l
+readLn =   getLine >>= \l ->
+             readIO l >>= \r ->
              return r

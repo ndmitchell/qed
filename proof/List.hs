@@ -53,15 +53,17 @@ nub                     :: Eq a => [a] -> [a]
 nub                     =  nubBy (==)
 
 nubBy                   :: (a -> a -> Bool) -> [a] -> [a]
-nubBy eq []             =  []
-nubBy eq (x:xs)         =  x : nubBy eq (filter (\y -> not (eq x y)) xs)
+nubBy eq x = case x of
+  []             ->  []
+  (x:xs)         ->  x : nubBy eq (filter (\y -> not (eq x y)) xs)
 
 delete                  :: Eq a => a -> [a] -> [a]
 delete                  =  deleteBy (==)
 
 deleteBy                :: (a -> a -> Bool) -> a -> [a] -> [a]
-deleteBy eq x []        = []
-deleteBy eq x (y:ys)    = if x `eq` y then ys else y : deleteBy eq x ys
+deleteBy eq x ys = case ys of
+  []        -> []
+  (y:ys)    -> if x `eq` y then ys else y : deleteBy eq x ys
 
 (\\)                    :: Eq a => [a] -> [a] -> [a]
 (\\)                    =  foldl (flip delete)
@@ -82,9 +84,11 @@ intersectBy             :: (a -> a -> Bool) -> [a] -> [a] -> [a]
 intersectBy eq xs ys    =  [x | x <- xs, any (eq x) ys]
 
 intersperse             :: a -> [a] -> [a]
-intersperse sep []      =  []
-intersperse sep [x]     =  [x]
-intersperse sep (x:xs)  =  x : sep : intersperse sep xs
+intersperse sep xs = case xs of
+  []      ->  []
+  x:xs -> case xs of
+    [] -> [x]
+    _:_ -> x : sep : intersperse sep xs
 
 -- transpose is lazy in both rows and columns,
 --       and works for non-rectangular 'matrices'
@@ -92,9 +96,11 @@ intersperse sep (x:xs)  =  x : sep : intersperse sep xs
 -- Note that [h | (h:t) <- xss] is not the same as (map head xss)
 --      because the former discards empty sublists inside xss
 transpose                :: [[a]] -> [[a]]
-transpose []             = []
-transpose ([]     : xss) = transpose xss
-transpose ((x:xs) : xss) = (x : [h | (h:t) <- xss]) : 
+transpose xs = case xs of
+  []             -> []
+  x:xss -> case x of
+    [] ->  transpose xss
+    (x:xs) -> (x : [h | (h:t) <- xss]) : 
                            transpose (xs : [t | (h:t) <- xss])
 
 partition               :: (a -> Bool) -> [a] -> ([a],[a])
@@ -107,46 +113,54 @@ group                   :: Eq a => [a] -> [[a]]
 group                   =  groupBy (==)
 
 groupBy                 :: (a -> a -> Bool) -> [a] -> [[a]]
-groupBy eq []           =  []
-groupBy eq (x:xs)       =  (x:ys) : groupBy eq zs
-                           where (ys,zs) = span (eq x) xs
+groupBy eq xs = case xs of
+  []           ->  []
+  (x:xs)       ->  let o = span (eq x) xs in (x:fst o) : groupBy eq (snd o)
 
 -- inits xs returns the list of initial segments of xs, shortest first.
 -- e.g., inits "abc" == ["","a","ab","abc"]
 inits                   :: [a] -> [[a]]
-inits []                =  [[]]
-inits (x:xs)            =  [[]] ++ map (x:) (inits xs)
+inits xs = case xs of
+  []                ->  [[]]
+  (x:xs)            ->  [[]] ++ map (x:) (inits xs)
 
 -- tails xs returns the list of all final segments of xs, longest first.
 -- e.g., tails "abc" == ["abc", "bc", "c",""]
 tails                   :: [a] -> [[a]]
-tails []                =  [[]]
-tails xxs@(_:xs)        =  xxs : tails xs
+tails xxs = case xxs of
+  []                ->  [[]]
+  (_:xs)        ->  xxs : tails xs
 
 isPrefixOf               :: Eq a => [a] -> [a] -> Bool
-isPrefixOf []     _      =  True
-isPrefixOf _      []     =  False
-isPrefixOf (x:xs) (y:ys) =  x == y && isPrefixOf xs ys
+isPrefixOf xs ys = case xs of
+  []     -> True
+  x:xs -> case ys of
+    [] -> False
+    y:ys -> x == y && isPrefixOf xs ys
 
 isSuffixOf              :: Eq a => [a] -> [a] -> Bool
 isSuffixOf x y          =  reverse x `isPrefixOf` reverse y
 
 mapAccumL               :: (a -> b -> (a, c)) -> a -> [b] -> (a, [c])
-mapAccumL f s []        =  (s, [])
-mapAccumL f s (x:xs)    =  (s'',y:ys)
-                           where (s', y ) = f s x
-                                 (s'',ys) = mapAccumL f s' xs
+mapAccumL f s xs = case xs of
+  []        ->  (s, [])
+  (x:xs)    ->
+      let s'_y = f s x in
+      let s''_ys = mapAccumL f (fst s'_y) xs in
+      (fst s''_ys, snd s'_y : snd s''_ys)
 
 mapAccumR               :: (a -> b -> (a, c)) -> a -> [b] -> (a, [c])
-mapAccumR f s []        =  (s, [])
-mapAccumR f s (x:xs)    =  (s'', y:ys)
-                           where (s'',y ) = f s' x
-                                 (s', ys) = mapAccumR f s xs
+mapAccumR f s xs = case xs of
+  []        ->  (s, [])
+  (x:xs)    -> 
+      let s'_ys = mapAccumR f s xs in
+      let s''_y = f (fst s'_ys) x in
+      (fst s''_y, snd s''_y:snd s''_ys)
 
 unfoldr                 :: (b -> Maybe (a,b)) -> b -> [a]
 unfoldr f b             = case f b of
                                 Nothing    -> []
-                                Just (a,b) -> a : unfoldr f b
+                                Just ab -> case ab of (a,b) -> a : unfoldr f b
 
 sort                    :: (Ord a) => [a] -> [a]
 sort                    =  sortBy compare
@@ -158,117 +172,52 @@ insert                  :: (Ord a) => a -> [a] -> [a]
 insert                  = insertBy compare
 
 insertBy                :: (a -> a -> Ordering) -> a -> [a] -> [a]
-insertBy cmp x []       =  [x]
-insertBy cmp x ys@(y:ys')
-                        =  case cmp x y of
-                                GT -> y : insertBy cmp x ys'
-                                _  -> x : ys
+insertBy cmp x xs = case ys of
+    []       ->  [x]
+    y:ys' -> case cmp x y of
+        GT -> y : insertBy cmp x ys'
+        EQ  -> x : ys
+        LT  -> x : ys
 
 maximumBy               :: (a -> a -> Ordering) -> [a] -> a
-maximumBy cmp []        =  error "List.maximumBy: empty list"
-maximumBy cmp xs        =  foldl1 max xs
-                        where
-                           max x y = case cmp x y of
-                                        GT -> x
-                                        _  -> y
+maximumBy cmp xs = case xs of
+ []        ->  error "List.maximumBy: empty list"
+ _:_ -> foldl1 (\x y -> case cmp x y of GT -> x; EQ -> y; LT -> y) xs
 
 minimumBy               :: (a -> a -> Ordering) -> [a] -> a
-minimumBy cmp []        =  error "List.minimumBy: empty list"
-minimumBy cmp xs        =  foldl1 min xs
-                        where
-                           min x y = case cmp x y of
-                                        GT -> y
-                                        _  -> x
+minimumBy cmp xs = case xs of
+  []        ->  error "List.minimumBy: empty list"
+  _:_ -> foldl1 (\x y -> case cmp x y of GT -> y; EQ -> x; LT -> x) xs
 
 genericLength           :: (Integral a) => [b] -> a
-genericLength []        =  0
-genericLength (x:xs)    =  1 + genericLength xs
+genericLength xs = case xs of
+  []        ->  0
+  (x:xs)    ->  1 + genericLength xs
 
 genericTake             :: (Integral a) => a -> [b] -> [b]
-genericTake _ []        =  []
-genericTake 0 _         =  []
-genericTake n (x:xs) 
-   | n > 0              =  x : genericTake (n-1) xs
-   | otherwise          =  error "List.genericTake: negative argument"
+genericTake n xs = case xs of
+  [] -> []
+  x:xs -> if n == 0 then []
+          else if n > 0 then x : genericTake (n-1) xs
+          else error "List.genericTake: negative argument"
 
 genericDrop             :: (Integral a) => a -> [b] -> [b]
-genericDrop 0 xs        =  xs
-genericDrop _ []        =  []
-genericDrop n (_:xs) 
-   | n > 0              =  genericDrop (n-1) xs
-   | otherwise          =  error "List.genericDrop: negative argument"
+genericDrop n xs = if n == 0 then xs else case xs of
+  [] -> []
+  _:xs -> if n > 0 then genericDrop (n-1) xs else error "List.genericDrop: negative argument"
 
 genericSplitAt          :: (Integral a) => a -> [b] -> ([b],[b])
-genericSplitAt 0 xs     =  ([],xs)
-genericSplitAt _ []     =  ([],[])
-genericSplitAt n (x:xs) 
-   | n > 0              =  (x:xs',xs'')
-   | otherwise          =  error "List.genericSplitAt: negative argument"
-       where (xs',xs'') =  genericSplitAt (n-1) xs
+genericSplitAt n xs = if n == 0 then ([],xs) else case xs of
+    [] -> ([],[])
+    x:xs -> let o = genericSplitAt (n-1) xs in
+            if n > 0 then (x:fst o, snd o) else error "List.genericSplitAt: negative argument"
 
 genericIndex            :: (Integral a) => [b] -> a -> b
-genericIndex (x:_)  0   =  x
-genericIndex (_:xs) n 
-        | n > 0         =  genericIndex xs (n-1)
-        | otherwise     =  error "List.genericIndex: negative argument"
-genericIndex _ _        =  error "List.genericIndex: index too large"
+genericIndex xs n = case xs of
+  [] -> error "List.genericIndex: index too large"
+  x:xs -> if n == 0 then x
+          else if n > 0 then genericIndex xs (n-1)
+          else error "List.genericIndex: negative argument"
 
 genericReplicate        :: (Integral a) => a -> b -> [b]
 genericReplicate n x    =  genericTake n (repeat x)
- 
-zip4                    :: [a] -> [b] -> [c] -> [d] -> [(a,b,c,d)]
-zip4                    =  zipWith4 (,,,)
-
-zip5                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [(a,b,c,d,e)]
-zip5                    =  zipWith5 (,,,,)
-
-zip6                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [f] -> 
-                              [(a,b,c,d,e,f)]
-zip6                    =  zipWith6 (,,,,,)
-
-zip7                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [f] ->
-                              [g] -> [(a,b,c,d,e,f,g)]
-zip7                    =  zipWith7 (,,,,,,)
-
-zipWith4                :: (a->b->c->d->e) -> [a]->[b]->[c]->[d]->[e]
-zipWith4 z (a:as) (b:bs) (c:cs) (d:ds)
-                        =  z a b c d : zipWith4 z as bs cs ds
-zipWith4 _ _ _ _ _      =  []
-
-zipWith5                :: (a->b->c->d->e->f) -> 
-                           [a]->[b]->[c]->[d]->[e]->[f]
-zipWith5 z (a:as) (b:bs) (c:cs) (d:ds) (e:es)
-                        =  z a b c d e : zipWith5 z as bs cs ds es
-zipWith5 _ _ _ _ _ _    =  []
-
-zipWith6                :: (a->b->c->d->e->f->g) ->
-                           [a]->[b]->[c]->[d]->[e]->[f]->[g]
-zipWith6 z (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs)
-                        =  z a b c d e f : zipWith6 z as bs cs ds es fs
-zipWith6 _ _ _ _ _ _ _  =  []
-
-zipWith7                :: (a->b->c->d->e->f->g->h) ->
-                           [a]->[b]->[c]->[d]->[e]->[f]->[g]->[h]
-zipWith7 z (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs)
-                   =  z a b c d e f g : zipWith7 z as bs cs ds es fs gs
-zipWith7 _ _ _ _ _ _ _ _ = []
-
-unzip4                  :: [(a,b,c,d)] -> ([a],[b],[c],[d])
-unzip4                  =  foldr (\(a,b,c,d) ~(as,bs,cs,ds) ->
-                                        (a:as,b:bs,c:cs,d:ds))
-                                 ([],[],[],[])
-
-unzip5                  :: [(a,b,c,d,e)] -> ([a],[b],[c],[d],[e])
-unzip5                  =  foldr (\(a,b,c,d,e) ~(as,bs,cs,ds,es) ->
-                                        (a:as,b:bs,c:cs,d:ds,e:es))
-                                 ([],[],[],[],[])
-
-unzip6                  :: [(a,b,c,d,e,f)] -> ([a],[b],[c],[d],[e],[f])
-unzip6                  =  foldr (\(a,b,c,d,e,f) ~(as,bs,cs,ds,es,fs) ->
-                                        (a:as,b:bs,c:cs,d:ds,e:es,f:fs))
-                                 ([],[],[],[],[],[])
-
-unzip7          :: [(a,b,c,d,e,f,g)] -> ([a],[b],[c],[d],[e],[f],[g])
-unzip7          =  foldr (\(a,b,c,d,e,f,g) ~(as,bs,cs,ds,es,fs,gs) ->
-                                (a:as,b:bs,c:cs,d:ds,e:es,f:fs,g:gs))
-                         ([],[],[],[],[],[],[])
