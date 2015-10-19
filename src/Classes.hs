@@ -11,20 +11,20 @@ classes = do
 
     lawsFunctor <- laws $ do
         law "fmap id = id"
-        law "f g . fmap f . fmap g = fmap (f . g)"
+        law "f g => fmap f . fmap g = fmap (f . g)"
 
     prove "x => [] ++ x = x" $ do
         unfold "++"
 
     prove "x => x ++ [] = x" $ do
         recurse
-        rhs $ unfold "[]"
+        rhs $ strict "[]"
 
     prove "x y z => (x ++ y) ++ z = x ++ (y ++ z)" $ do
         recurse
         bhs $ unfold "++"
 
-    satisfy lawsMonoid $ do
+    satisfy "Monoid []" lawsMonoid $ do
         bind "mempty = []"
         bind "(<>) = (++)"
 
@@ -32,12 +32,14 @@ classes = do
         bhs $ unfold "id"
         expand
         recurse
-        rhs $ unfold "[]"
+        rhs $ strict "[]"
 
     prove "f g => map f . map g = map (f . g)" $ do
-        unfold "."
+        twice $ unfold "."
         twice unlet
         rhs expand
+        recurse
+        unfold "map"
 
-    satisfy lawsFunctor $ do
+    satisfy "Functor []" lawsFunctor $ do
         bind "fmap = map"
