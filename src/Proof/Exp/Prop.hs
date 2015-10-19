@@ -22,13 +22,13 @@ sym (Prop vs a b) = Prop vs b a
 
 instance Pretty Prop where
     pretty (Prop vs a b) = "forall " ++ unwords (map fromVar vs) ++ ".\n" ++ f a ++ f b
-        where f = unlines . map ("  "++) . lines . pretty
+        where f = unlines . map ("  "++) . lines . show
 
 instance Read Prop where
     readsPrec = simpleReadsPrec $ \x -> case () of
         _ | (quant, x) <- fromMaybe ("",x) $ stripInfix " => " x
           , Just (a,b) <- stripInfix " = " x
-          -> Prop (map V $ words quant) (parse a) (parse b)
+          -> Prop (map V $ words quant) (read a) (read b)
 
 instance Show Prop where
     show = pretty

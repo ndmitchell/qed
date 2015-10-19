@@ -59,7 +59,7 @@ reduce Known{..} = f
         f (App a b) = (`App` b) <$> f a
         f (Var v) = lookup v definitions
         f (Case x xs) = (`Case` xs) <$> f x
-        f x = error $ "step: Don't know, " ++ pretty x
+        f x = error $ "step: Don't know, " ++ show x
 
 
 -- | Split the expression into multiple subexpressions

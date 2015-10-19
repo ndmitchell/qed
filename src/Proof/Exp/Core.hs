@@ -5,10 +5,9 @@ module Proof.Exp.Core(
     Var(..), Con(..), Exp(..), Pat(..),
     fromApps, fromLams, fromLets, lets, lams, apps,
     isVar,
-    pretty,
     vars, varsP, free, subst, relabel, relabelAvoid, fresh,
     eval, equivalent,
-    fromExp, fromName, parse,
+    fromExp, fromName,
     simplifyExp
     ) where
 
@@ -26,8 +25,6 @@ import Control.DeepSeq
 import Proof.Util hiding (fresh)
 import Data.Generics.Uniplate.Data
 
-parse :: String -> Exp
-parse = fromExp . deflate . fromParseResult . parseExp
 
 ---------------------------------------------------------------------
 -- TYPE
@@ -42,12 +39,22 @@ data Exp
     | Let Var Exp Exp -- non-recursive
     | Lam Var Exp
     | Case Exp [(Pat,Exp)]
-      deriving (Data,Typeable,Show,Eq,Ord)
+      deriving (Data,Typeable,Eq,Ord)
 
 data Pat
     = PCon Con [Var]
     | PWild
-      deriving (Data,Typeable,Show,Eq,Ord)
+      deriving (Data,Typeable,Eq,Ord)
+
+instance Read Exp where
+    readsPrec = simpleReadsPrec $ fromExp . deflate . fromParseResult . parseExp
+
+instance Show Exp where
+    show = prettyPrint . unparen . inflate . toExp
+        where unparen (Paren x) = x
+              unparen x = x
+
+
 
 isVar Var{} = True; isVar _ = False
 
@@ -64,7 +71,7 @@ instance NFData Pat where
     rnf PWild = ()
 
 caseCon :: Exp -> Maybe ([(Var,Exp)], Exp)
-caseCon o@(Case (fromApps -> (Con c, xs)) alts) = Just $ headNote (error "Malformed case: " ++ pretty o) $ mapMaybe f alts
+caseCon o@(Case (fromApps -> (Con c, xs)) alts) = Just $ headNote (error $ "Malformed case: " ++ show o) $ mapMaybe f alts
     where f (PWild, x) = Just ([], x)
           f (PCon c2 vs, x) | c /= c2 = Nothing
                             | length vs /= length xs = error "Malformed arity"
@@ -92,11 +99,6 @@ fromLams x = ([], x)
 fromApps (App x y) = (a,b ++ [y])
     where (a,b) = fromApps x
 fromApps x = (x,[])
-
-instance Pretty Exp where
-    pretty = prettyPrint . unparen . inflate . toExp
-        where unparen (Paren x) = x
-              unparen x = x
 
 ---------------------------------------------------------------------
 -- BINDING AWARE OPERATIONS
