@@ -20,8 +20,8 @@ instance NFData Prop where
 sym :: Prop -> Prop
 sym (Prop vs a b) = Prop vs b a
 
-instance Pretty Prop where
-    pretty (Prop vs a b) = "forall " ++ unwords (map fromVar vs) ++ ".\n" ++ f a ++ f b
+instance Show Prop where
+    show (Prop vs a b) = unwords (map fromVar vs ++ ["=>"]) ++ "\n" ++ f a ++ "=" ++ drop 1 (f b)
         where f = unlines . map ("  "++) . lines . show
 
 instance Read Prop where
@@ -29,9 +29,6 @@ instance Read Prop where
         _ | (quant, x) <- fromMaybe ("",x) $ stripInfix " => " x
           , Just (a,b) <- stripInfix " = " x
           -> Prop (map V $ words quant) (read a) (read b)
-
-instance Show Prop where
-    show = pretty
 
 simplifyProp :: Prop -> Prop
 simplifyProp = label . simple . unlam . simple
