@@ -7,10 +7,10 @@ module Proof.Exp.Core(
     isVar,
     patCon, patVars,
     caseCon,
-    prettys, pretty,
+    pretty,
     vars, varsP, free, subst, unsubst, relabel, relabelAvoid, fresh,
     eval, equivalent,
-    fromHSE, fromExp, fromName, toHSE, parse,
+    fromHSE, fromExp, fromName, parse,
     simplifyExp
     ) where
 
@@ -107,10 +107,6 @@ instance Pretty Exp where
     pretty = prettyPrint . unparen . inflate . toExp
         where unparen (Paren x) = x
               unparen x = x
-
-prettys :: [(Var,Exp)] -> String
-prettys = prettyPrint . toHSE
-
 
 ---------------------------------------------------------------------
 -- BINDING AWARE OPERATIONS
@@ -286,9 +282,6 @@ fromPatVar x = error $ "Unhandled fromPatVar: " ++ show x
 
 ---------------------------------------------------------------------
 -- TO HSE
-
-toHSE :: [(Var,Exp)] -> Module
-toHSE xs = inflate $ Module sl (ModuleName "") [] Nothing Nothing [] $ map (uncurry toDecl) xs
 
 toDecl :: Var -> Exp -> Decl
 toDecl (V f) x = PatBind sl (PVar $ toName f) (UnGuardedRhs $ toExp x) (BDecls [])
