@@ -1,2 +1,3 @@
 :set -fwarn-unused-binds -fwarn-unused-imports
-:load Main.hs
+:set -isrc
+:load src/Main.hs
