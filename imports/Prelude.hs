@@ -774,7 +774,7 @@ iterate f x      =  x : iterate f (f x)
 -- repeat x is an infinite list, with x the value of every element.
 
 repeat           :: a -> [a]
-repeat x         =  x : repeat xs
+repeat x         =  x : repeat x
 
 -- replicate n x is a list of length n with x the value of every element
 
