@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards, ViewPatterns #-}
 
 -- | Module for operating on haskell-src-exts expressions.
-module Proof.Exp.HSE(deflate, inflate, noCAF, sl) where
+module Proof.Exp.HSE(deflate, inflate, sl) where
 
 import Data.Data
 import Data.List
@@ -155,23 +155,3 @@ inflateRhs x = x
 inflateAlt :: Alt -> Alt
 inflateAlt (Alt sl (PParen p) x y) = Alt sl p x y
 inflateAlt x = x
-
-
----------------------------------------------------------------------
--- CAF AVOIDANCE
-
-noCAF :: Module -> Module
-noCAF (Module a b c d exp e bod) = inflate $ Module a b c d exp e $ transformBi addDefn $ transformBi addCall bod
-    where
-        bad = [n | PatBind _ (PVar n) (UnGuardedRhs e) (BDecls []) <- bod, not $ isZeroCost e] \\ universeBi exp
-        addDefn (PatBind sl (PVar n) (UnGuardedRhs e) dec) | n `elem` bad =
-                (PatBind sl (PVar n) (UnGuardedRhs $ Lambda sl [PApp (Special UnboxedSingleCon) []] e) dec)
-        addDefn x = x
-        addCall (Var (UnQual n)) | n `elem` bad = App (Var $ UnQual n) (Con $ Special UnboxedSingleCon)
-        addCall x = x
-
-isZeroCost Lambda{} = True
-isZeroCost (Let (BDecls [PatBind _ (PVar _) (UnGuardedRhs e1) (BDecls [])]) e2) = isZeroCost e1 && isZeroCost e2
-isZeroCost (Var _) = True
-isZeroCost (Paren x) = isZeroCost x
-isZeroCost _ = False
