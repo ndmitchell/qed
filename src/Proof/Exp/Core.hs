@@ -6,7 +6,7 @@ module Proof.Exp.Core(
     fromApps, fromLams, fromLets, lets, lams, apps,
     isVar,
     vars, varsP, free, subst, relabel, relabelAvoid, fresh,
-    eval, equivalent,
+    equivalent,
     fromExp, fromName,
     simplifyExp
     ) where
