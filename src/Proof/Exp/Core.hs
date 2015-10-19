@@ -5,12 +5,10 @@ module Proof.Exp.Core(
     Var(..), Con(..), Exp(..), Pat(..),
     fromApps, fromLams, fromLets, lets, lams, apps,
     isVar,
-    patCon, patVars,
-    caseCon,
     pretty,
-    vars, varsP, free, subst, unsubst, relabel, relabelAvoid, fresh,
+    vars, varsP, free, subst, relabel, relabelAvoid, fresh,
     eval, equivalent,
-    fromHSE, fromExp, fromName, parse,
+    fromExp, fromName, parse,
     simplifyExp
     ) where
 
@@ -65,14 +63,6 @@ instance NFData Pat where
     rnf (PCon a b) = rnf2 a b
     rnf PWild = ()
 
-patVars :: Pat -> [Var]
-patVars (PCon _ vs) = vs
-patVars PWild = []
-
-patCon :: Pat -> Maybe Con
-patCon (PCon c _) = Just c
-patCon PWild = Nothing
-
 caseCon :: Exp -> Maybe ([(Var,Exp)], Exp)
 caseCon o@(Case (fromApps -> (Con c, xs)) alts) = Just $ headNote (error "Malformed case: " ++ pretty o) $ mapMaybe f alts
     where f (PWild, x) = Just ([], x)
@@ -124,20 +114,6 @@ free (Lam x y) = delete x $ free y
 free (Case x y) = nub $ free x ++ concat [free b \\ varsP a | (a,b) <- y]
 free (Let a b y) = nub $ free b ++ delete a (free y)
 free _ = []
-
--- first one has the free variables.
---
--- > subst (fromJust $ unsubst a b) a == b
-unsubst :: Exp -> Exp -> Maybe [(Var,Exp)]
-unsubst = f
-    where
-        f x y | x == y = Just []
-        f (Var x) y = Just [(x,y)]
-        f (App x1 x2) (App y1 y2) = f x1 y1 `g` f x2 y2
-        f (Lam x1 x2) (Lam y1 y2) = undefined
-        f _ _ = Nothing
-
-        g = undefined
 
 
 subst :: [(Var,Exp)] -> Exp -> Exp
@@ -239,10 +215,6 @@ count v _ = 0
 
 ---------------------------------------------------------------------
 -- FROM HSE
-
-fromHSE :: Module -> [(Var,Exp)]
-fromHSE m = concatMap fromDecl xs
-  where Module _ _ _ _ _ _ xs = deflate m
 
 fromDecl :: Decl -> [(Var,Exp)]
 fromDecl (PatBind _ (PVar f) (UnGuardedRhs x) (BDecls [])) = [(V $ fromName f, fromExp x)]
