@@ -11,6 +11,8 @@ module Proof.QED(
     twice, thrice, many
     ) where
 
+import Proof.QED.Advanced() -- so I test all the API's
+
 import Proof.QED.Type
 import Proof.QED.Trusted
 import Proof.Exp.Prop
