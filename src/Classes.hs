@@ -58,7 +58,7 @@ classes = do
 
     decl "return_List = (:[])"
     decl "bind_List = flip concatMap"
-    let unwind = mapM_ (try_ . many . unfold) ["return_List","bind_List","concatMap","concat","flip","."]
+    let unwind = mapM_ (perhaps . many . unfold) ["return_List","bind_List","concatMap","concat","flip","."]
 
     when False $ prove "a k => return_List a `bind_List` k = k a" $ do
         unwind
@@ -77,10 +77,34 @@ classes = do
     prove "m k h => m `bind_List` (\\x -> k x `bind_List` h) = (m `bind_List` k) `bind_List` h" $ do
         unwind
         divide
+        recurse
+        rhs $ unfold "foldr"
+        rhs $ unfold "map"
+        rhs $ unfold "++"
+        unsafeCheat "bored"
 
-    satisfy "Monad []" lawsMonad $ do
+    skip $ satisfy "Monad []" lawsMonad $ do
         bind "return = return_List"
         bind "(>>=) = bind_List"
+
+    prove "v => return id `ap` v = v" $ do
+        unfold "ap"
+        unfold "liftM2"
+        unfold "$"
+
+    prove "u v w => return (.) `ap` u `ap` v `ap` w = u `ap` (v `ap` w)" $ do
+        return ()
+
+    prove  "f x => return f `ap` return x = return (f x)" $ do
+        return ()
+
+    prove "u y => u `ap` return y = return ($ y) `ap` u" $ do
+        return ()
+
+    lawsMonad <- laws $ do
+        law "a k => return a >>= k = k a"
+        law "m => m >>= return = m"
+        law "m k h => m >>= (\\x -> k x >>= h) = (m >>= k) >>= h"
 
     satisfy "Applicative Monad" lawsApplicative $ do
         bind "pure = return"

@@ -25,9 +25,9 @@ rewriteUnfold new@(Prop nv na nb) = do
     checkUnfold definitions ov ob nb
     unsafeReplaceFirstGoal [Goal ps new]
 
-checkEqual a b = when (a /= b) $ fail $ "Not equal, " ++ show a ++ " vs " ++ show b
+checkEqual a b = when (a /= b) $ badProof $ "Not equal, " ++ show a ++ " vs " ++ show b
 
-checkUnfold defs vars old new = unless (f old new) $ fail $ "Trusted, invalid unfolding"
+checkUnfold defs vars old new = unless (f old new) $ badProof $ "Trusted, invalid unfolding"
     where
         -- variables that have been captured, err on being too conservative
         vars2 = vars ++ concat [childrenBi $ descend (const $ Con $ C "") x | x <- universe old, not $ isVar x]
@@ -49,7 +49,7 @@ rewriteRecurse :: Proof ()
 rewriteRecurse = do
     (known, _, Goal pre p@(Prop vs a b)) <- getGoal
     case (reduce known a, reduce known b) of
-        (Nothing, Nothing) -> fail $ "Cannot reduce\n" ++ show a ++ "\n" ++ show b
+        (Nothing, Nothing) -> badProof $ "Cannot reduce\n" ++ show a ++ "\n" ++ show b
         (aa, bb) -> unsafeReplaceFirstGoal [Goal (p:pre) $ Prop vs (fromMaybe a aa) (fromMaybe b bb)]
 
 reduce :: Known -> Exp -> Maybe Exp
@@ -67,7 +67,7 @@ rewriteSplit :: Proof ()
 rewriteSplit = do
     (_, _, Goal pre (Prop vs a b)) <- getGoal
     checkEqual (descend (const $ Con $ C "") a) (descend (const $ Con $ C "") b)
-    when (null $ children a) $ fail "No children to split apart"
+    when (null $ children a) $ badProof "No children to split apart"
     case (a,b) of
         (Lam v a, Lam _ b) | v `notElem` vs -> unsafeReplaceFirstGoal [Goal pre $ Prop (vs ++ [v]) a b]
         _ -> unsafeReplaceFirstGoal $ zipWith (\a b -> Goal pre $ Prop vs a b) (f a) (f b)
@@ -85,4 +85,4 @@ rewriteTautology = do
     if tautology p || any (==> p) (pre ++ proved) then
         unsafeReplaceFirstGoal []
      else
-        fail "Not a tautology"
+        badProof "Not a tautology"

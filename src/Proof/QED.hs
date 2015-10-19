@@ -8,7 +8,8 @@ module Proof.QED(
     satisfy, bind,
     rhs, lhs, bhs, at,
     recurse, unfold, unfold_, strict, expand, unlet, divide,
-    twice, thrice, many, try_
+    twice, thrice, many, perhaps, skip,
+    qedCheat, unsafeCheat
     ) where
 
 import Proof.QED.Advanced() -- so I test all the API's
@@ -19,7 +20,7 @@ import Proof.Exp.Prop
 import Proof.Exp.Core
 import Proof.Exp.HSE
 import Control.Monad.IO.Class
-import Control.Monad.Catch
+import Control.Monad.Catch as C
 import Control.Monad
 import Language.Haskell.Exts hiding (Var, Exp, Con, Case, App, Let)
 import Data.Maybe
@@ -116,7 +117,7 @@ thrice :: Proof () -> Proof ()
 thrice = replicateM_ 3
 
 many :: Proof () -> Proof ()
-many p = p >> (forever p `catch` \(_ :: SomeException) -> return ())
+many p = void $ p >> perhaps (forever p)
 
 rhs :: Proof () -> Proof ()
 rhs = side RHS
@@ -125,7 +126,7 @@ lhs :: Proof () -> Proof ()
 lhs = side LHS
 
 side :: Side -> Proof () -> Proof ()
-side x act = bracket
+side x act = C.bracket
     (focusSide . snd <$> getUnknown)
     setFocusSide $
     const $ setFocusSide (Just x) >> act
@@ -134,7 +135,7 @@ bhs :: Proof () -> Proof ()
 bhs p = lhs p >> rhs p
 
 at :: Int -> Proof () -> Proof ()
-at i act = bracket
+at i act = C.bracket
     (focusAt . snd <$> getUnknown)
     setFocusAt $
     const $ setFocusAt i >> act
@@ -149,8 +150,10 @@ apply run test = do
     (known, Unknown{..}, Goal pre (Prop vs lhs rhs)) <- getGoal
     let poss = (if focusSide /= Just RHS then map (,\lhs -> Prop vs lhs rhs) $ contexts lhs else []) ++
                (if focusSide /= Just LHS then map (,\rhs -> Prop vs lhs rhs) $ contexts rhs else [])
-    run $ [gen2 $ gen x | ((test known -> Just x, gen),gen2) <- poss] !! focusAt
-    auto
+    let xs = [gen2 $ gen x | ((test known -> Just x, gen),gen2) <- poss]
+    case drop (focusAt - 1) xs of
+        [] -> badProof "Cannot apply, no suitable elements at index"
+        x:_ -> run x >> auto
 
 auto :: Proof ()
 auto = f autos
@@ -159,22 +162,20 @@ auto = f autos
 
         f [] = return ()
         f (a:as) = do
-            r <- try_ a
-            case r of
-                Left e -> f as
-                Right _ -> f autos
+            r <- perhaps a
+            f $ if r then autos else as
 
 
 autoSimplify :: Proof ()
 autoSimplify = do
     (_, _, Goal _ x) <- getGoal
     let x2 = simplifyProp x
-    if x2 == x then fail "cannot autoSimplify" else rewriteEquivalent x2
+    if x2 == x then badProof "cannot autoSimplify" else rewriteEquivalent x2
 
 autoPeel :: Proof ()
 autoPeel = do
     (_, _, Goal _ (Prop vs a b)) <- getGoal
-    if f vs a && f vs b then rewriteSplit else fail "cannot autoPeel"
+    if f vs a && f vs b then rewriteSplit else badProof "cannot autoPeel"
     where
         f vs Lam{} = True
         f vs Con{} = True
@@ -184,8 +185,11 @@ autoPeel = do
         f vs _ = False
 
 
-try_ :: MonadCatch m => m a -> m (Either SomeException a)
-try_ = try
+perhaps :: Proof () -> Proof Bool
+perhaps x = not <$> isBadProof x
+
+skip :: QED () -> QED ()
+skip _ = return ()
 
 {-
 autoLaw :: State -> Goal -> Maybe [Goal]

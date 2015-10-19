@@ -12,6 +12,7 @@ import Control.DeepSeq
 rnf2 a b = rnf a `seq` rnf b
 rnf3 a b c = rnf a `seq` rnf b `seq` rnf c
 rnf4 a b c d = rnf a `seq` rnf b `seq` rnf c `seq` rnf d
+rnf5 a b c d e = rnf a `seq` rnf b `seq` rnf c `seq` rnf d `seq` rnf e
 
 
 fast = "--fast" `elem` unsafePerformIO getArgs

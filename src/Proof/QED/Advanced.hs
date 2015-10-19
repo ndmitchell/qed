@@ -3,6 +3,7 @@ module Proof.QED.Advanced(
     Known(..), getKnown,
     Unknown(..), getUnknown,
     Goal(..), getGoal,
+    BadProof(..), badProof, isBadProof,
     Laws(..),
     module Proof.QED.Trusted
     ) where

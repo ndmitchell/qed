@@ -2,12 +2,13 @@
 
 module Proof.QED.Type(
     Known(..), Unknown(..), Goal(..), Side(..),
-    QED, getKnown, qed,
+    QED, getKnown, qed, qedCheat,
     addDefinition, addType, addAssumed, addProved,
     Proof, getUnknown, getGoal, setFocusSide, setFocusAt,
-    unsafeReplaceFirstGoal,
+    BadProof(..), badProof, isBadProof,
+    unsafeReplaceFirstGoal, unsafeCheat,
     Bind, addBind, runBind,
-    Laws(..)
+    Laws(..),
     ) where
 
 import Control.Monad.Trans.State
@@ -19,6 +20,7 @@ import Control.Exception
 import Control.DeepSeq
 import Control.Monad
 import Data.IORef
+import Data.Typeable
 import Proof.Util
 import Proof.Exp.Core
 import Proof.Exp.Prop
@@ -34,7 +36,12 @@ newtype QED a = QED (StateT Known IO a)
     deriving (Functor, Applicative, Monad, MonadIO)
 
 qed :: QED a -> IO ()
-qed (QED x) = void $ execStateT x (Known [] builtinTypes [] [])
+qed (QED x) = void $ execStateT x (Known [] builtinTypes [] [] False)
+
+qedCheat :: QED a -> IO ()
+qedCheat act = qed $ do
+    modifyKnown $ \s -> s{cheater=True}
+    act
 
 builtinTypes :: [(String,[(Con,Int)])]
 builtinTypes =
@@ -46,10 +53,11 @@ data Known = Known
     ,types :: [(String, [(Con,Int)])]
     ,assumed :: [Prop]
     ,proved :: [Prop]
+    ,cheater :: Bool
     } deriving Show
 
 instance NFData Known where
-    rnf (Known a b c d) = rnf (a,b,c,d)
+    rnf (Known a b c d e) = rnf5 a b c d e
 
 getKnown :: QED Known
 getKnown = QED get
@@ -78,7 +86,7 @@ addProved prop proof = do
         proof
         unknown <- getUnknown
         unless (null $ goals $ snd unknown) $ do
-            fail $ "Did not prove goals"
+            badProof $ "Did not prove goals"
     known <- QED get
     liftIO $ proof `runReaderT` (known, unknown) `C.onException` do
         print . goals =<< readIORef unknown
@@ -119,7 +127,7 @@ getGoal :: Proof (Known, Unknown, Goal)
 getGoal = do
     (known, unknown) <- getUnknown
     case goals unknown of
-        [] -> fail "No goals left, proof is already complete"
+        [] -> badProof "No goals left, proof is already complete"
         g:gs -> return (known, unknown, g)
 
 unsafeReplaceFirstGoal :: [Goal] -> Proof ()
@@ -128,12 +136,28 @@ unsafeReplaceFirstGoal x = do
     (_, u) <- Proof ask
     liftIO $ modifyIORef u $ \s -> s{goals = x ++ drop 1 (goals s)}
 
+unsafeCheat :: String -> Proof ()
+unsafeCheat msg = do
+    (known, _) <- getUnknown
+    unless (cheater known) $ badProof "Must use qedCheat to enable cheating"
+    unsafeReplaceFirstGoal []
+    liftIO $ putStrLn $ "unsafeCheat: " ++ msg
+
 setFocusSide :: Maybe Side -> Proof ()
 setFocusSide x | () <- rnf x = do (_, u) <- Proof ask; liftIO $ modifyIORef u $ \s -> s{focusSide=x}
 
 setFocusAt :: Int -> Proof ()
 setFocusAt !x = do (_, u) <- Proof ask; liftIO $ modifyIORef u $ \s -> s{focusAt=x}
 
+newtype BadProof = BadProof String deriving Typeable
+instance Show BadProof where show (BadProof x) = "Bad proof: " ++ x
+instance Exception BadProof
+
+badProof :: String -> Proof a
+badProof = throwM . BadProof
+
+isBadProof :: Proof () -> Proof Bool
+isBadProof act = C.catch (act >> return False) $ \BadProof{} -> return True
 
 ---------------------------------------------------------------------
 -- BINDINGS
