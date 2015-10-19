@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, PatternGuards, ViewPatterns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | Module for operating on haskell-src-exts expressions.
 module Proof.Exp.HSE(deflate, inflate, sl) where
@@ -26,6 +26,7 @@ fresh del = ["v" ++ show i | i  <- [1..]] \\ del
 ---------------------------------------------------------------------
 -- DEFLATE
 
+-- | Use fewer constructors to express the same program.
 deflate :: Data a => a -> a
 deflate = transformBi deflateExp . transformBi deflatePat . transformBi deflateQName . transformBi deflateDecl . deflateWildcard
 
@@ -124,6 +125,7 @@ isPVar PVar{} = True; isPVar _ = False
 ---------------------------------------------------------------------
 -- INFLATE
 
+-- | Add back in syntactic forms to make it more readable.
 inflate :: Data a => a -> a
 inflate =
     transformBi inflateRhs . transformBi inflateAlt . transformBi inflateRhs .
