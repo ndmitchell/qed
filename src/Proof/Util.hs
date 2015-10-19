@@ -75,8 +75,5 @@ equivalentOn op name x y
     where xx = op x
           yy = op y
 
-class Pretty a where pretty :: a -> String
-
-
 simpleReadsPrec :: (String -> a) -> (Int -> ReadS a)
 simpleReadsPrec f _ s = [(f s, "")]
