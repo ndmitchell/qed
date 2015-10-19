@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, BangPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, BangPatterns, TupleSections #-}
 
 module Proof.QED.Type(
     Known(..), Unknown(..), Goal(..), Side(..),
@@ -13,12 +13,12 @@ module Proof.QED.Type(
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer
-import Control.Monad.Trans.Class
-import Control.Monad.Catch
+import Control.Monad.Catch as C
 import Control.Monad.IO.Class
 import Control.Exception
 import Control.DeepSeq
 import Control.Monad
+import Data.IORef
 import Proof.Util
 import Proof.Exp.Core
 import Proof.Exp.Prop
@@ -71,14 +71,19 @@ addAssumed :: Prop -> QED ()
 addAssumed a = modifyKnown $ \s -> s{assumed = assumed s ++ [a]}
 
 addProved :: Prop -> Proof () -> QED ()
-addProved prop (Proof proof) = do
+addProved prop proof = do
+    liftIO $ putStr $ show prop
+    unknown <- liftIO $ newIORef $ Unknown [Goal [] prop] Nothing 0
+    Proof proof <- return $ do
+        proof
+        unknown <- getUnknown
+        unless (null $ goals $ snd unknown) $ do
+            fail $ "Did not prove goals"
     known <- QED get
-    let unknown = Unknown [Goal [] prop] Nothing 0
-    unknown <- liftIO $ proof `runReaderT` known `execStateT` unknown
-    unless (null $ goals unknown) $ do
-        fail $ "Did not prove goal\n" ++ show (goals unknown)
+    liftIO $ proof `runReaderT` (known, unknown) `C.onException` do
+        print . goals =<< readIORef unknown
     modifyKnown $ \s -> s{proved = proved s ++ [prop]}
-    liftIO $ putStrLn $ show prop ++ "QED"
+    liftIO $ putStrLn "QED\n"
 
 
 ---------------------------------------------------------------------
@@ -104,11 +109,11 @@ instance NFData Side where
 instance NFData Goal where
     rnf (Goal a b) = rnf2 a b
 
-newtype Proof a = Proof (ReaderT Known (StateT Unknown IO) a)
+newtype Proof a = Proof (ReaderT (Known, IORef Unknown) IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask)
 
 getUnknown :: Proof (Known, Unknown)
-getUnknown = Proof $ (,) <$> ask <*> lift get
+getUnknown = Proof $ do (k,u) <- ask; liftIO $ (k,) <$> readIORef u
 
 getGoal :: Proof (Known, Unknown, Goal)
 getGoal = do
@@ -120,13 +125,14 @@ getGoal = do
 unsafeReplaceFirstGoal :: [Goal] -> Proof ()
 unsafeReplaceFirstGoal x = do
     liftIO $ evaluate $ rnf x
-    Proof $ lift $ modify $ \s -> s{goals = x ++ drop 1 (goals s)}
+    (_, u) <- Proof ask
+    liftIO $ modifyIORef u $ \s -> s{goals = x ++ drop 1 (goals s)}
 
 setFocusSide :: Maybe Side -> Proof ()
-setFocusSide x | () <- rnf x = Proof $ lift $ modify $ \s -> s{focusSide=x}
+setFocusSide x | () <- rnf x = do (_, u) <- Proof ask; liftIO $ modifyIORef u $ \s -> s{focusSide=x}
 
 setFocusAt :: Int -> Proof ()
-setFocusAt !x = Proof $ lift $ modify $ \s -> s{focusAt=x}
+setFocusAt !x = do (_, u) <- Proof ask; liftIO $ modifyIORef u $ \s -> s{focusAt=x}
 
 
 ---------------------------------------------------------------------

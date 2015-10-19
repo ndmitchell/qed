@@ -7,7 +7,7 @@ module Proof.QED(
     prove,
     satisfy, bind,
     rhs, lhs, bhs, at,
-    recurse, unfold, unfold_, expand, unlet,
+    recurse, unfold, unfold_, strict, expand, unlet, divide,
     twice, thrice, many
     ) where
 
@@ -19,7 +19,8 @@ import Proof.Exp.HSE
 import Control.Monad.IO.Class
 import Control.Monad.Catch
 import Control.Monad
-import Language.Haskell.Exts hiding (Var, Exp)
+import Language.Haskell.Exts hiding (Var, Exp, Con, Case, App, Let)
+import Data.Maybe
 import Data.List.Extra
 import Data.Generics.Uniplate.Data
 
@@ -60,26 +61,50 @@ addDecl x = error $ "Cannot add declaration, " ++ prettyPrint x
 prove :: PropString -> Proof () -> QED ()
 prove (read -> prop) proof = addProved prop proof
 
-satisfy :: Laws -> Bind () -> QED ()
-satisfy = undefined
+satisfy :: String -> Laws -> Bind () -> QED ()
+satisfy msg (Laws ps) (runBind -> bind) = do
+    liftIO $ putStrLn $ "Satisfy " ++ msg
+    Known{..} <- getKnown
+    forM_ ps $ \(Prop vs a b) -> do
+        let p2 = Prop vs (subst bind a) (subst bind b)
+        unless (any (==> p2) (assumed ++ proved)) $ do
+            fail $ "Failed to satisfy:" ++ show p2
+    liftIO $ putStrLn "QED\n"
 
 unfold :: String -> Proof ()
 unfold name = apply rewriteUnfold $ \Known{..} x -> case x of
-    Var x | Just e <- lookup x definitions -> Just e
+    Var x | x == V name, Just e <- lookup x definitions -> Just e
     _ -> Nothing
 
 unfold_ :: Proof ()
-unfold_ = undefined
+unfold_ = apply rewriteUnfold $ \Known{..} x -> case x of
+    Var x | Just e <- lookup x definitions -> Just e
+    _ -> Nothing
+
+strict :: String -> Proof ()
+strict name = apply rewriteEquivalent $ \Known{..} x -> case x of
+    Var x -> Just $ Case (Var x)
+        [ (PCon c vars, apps (Con c) $ map Var vars)
+        | (c,vs) <- fromJust $ lookup name types, let vars = take vs $ fresh []]
+    _ -> Nothing
 
 recurse :: Proof ()
-recurse = undefined
+recurse = rewriteRecurse >> auto
 
 expand :: Proof ()
-expand = undefined
+expand = apply rewriteEquivalent $ \Known{..} o@(fromLams -> (vs, x)) -> Just $
+    let v:_ = fresh $ vars o 
+    in lams (vs ++ [v]) $ App x $ Var v
 
 
 unlet :: Proof ()
-unlet = undefined
+unlet = apply rewriteEquivalent $ \_ x ->
+    case x of Let a b x -> Just $ subst [(a,b)] x; _ -> Nothing
+
+divide :: Proof ()
+divide = do
+    rewriteSplit
+    auto
 
 
 twice :: Proof () -> Proof ()
@@ -90,7 +115,6 @@ thrice = replicateM_ 3
 
 many :: Proof () -> Proof ()
 many p = p >> (forever p `catch` \(_ :: SomeException) -> return ())
-
 
 rhs :: Proof () -> Proof ()
 rhs = side RHS
@@ -127,14 +151,36 @@ apply run test = do
     auto
 
 auto :: Proof ()
-auto = void $ do
-    autoSimplify
-    rewriteTautology
+auto = f autos
+    where
+        autos = [rewriteTautology, autoSimplify, autoPeel]
+
+        f [] = return ()
+        f (a:as) = do
+            r <- try_ a
+            case r of
+                Left e -> f as
+                Right _ -> f autos
+
 
 autoSimplify :: Proof ()
 autoSimplify = do
     (_, _, Goal _ x) <- getGoal
-    rewriteEquivalent $ simplifyProp x
+    let x2 = simplifyProp x
+    if x2 == x then fail "cannot autoSimplify" else rewriteEquivalent x2
+
+autoPeel :: Proof ()
+autoPeel = do
+    (_, _, Goal _ (Prop vs a b)) <- getGoal
+    if f vs a && f vs b then rewriteSplit else fail "cannot autoPeel"
+    where
+        f vs Lam{} = True
+        f vs Con{} = True
+        f vs (App x _) = f vs x
+        f vs (Var v) = v `elem` vs
+        f vs (Case (Var v) _) = v `elem` vs
+        f vs _ = False
+
 
 try_ :: MonadCatch m => m a -> m (Either SomeException a)
 try_ = try
