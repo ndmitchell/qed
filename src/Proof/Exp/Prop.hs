@@ -52,7 +52,7 @@ simplifyProp = label . simple . unlam . simple
 
 -- Does the first property imply the second
 (==>) :: Prop -> Prop -> Bool
-(==>) a b = a == b || simplifyProp (sym a) == b
+(==>) a b = simplifyProp a == simplifyProp b || simplifyProp (sym a) == simplifyProp b
 
 tautology :: Prop -> Bool
 tautology (Prop vs a b) = a == b
