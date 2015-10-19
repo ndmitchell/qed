@@ -7,6 +7,7 @@ module Main(main) where
 import Classes
 import HLint
 import Proof.QED
+import Control.Monad
 
 main = qed $ do
     imports "Builtin"
@@ -18,4 +19,4 @@ main = qed $ do
     law "a => a + 0 = a"
 
     classes
-    hlint
+    when False hlint

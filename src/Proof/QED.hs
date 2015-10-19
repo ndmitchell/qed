@@ -8,7 +8,7 @@ module Proof.QED(
     satisfy, bind,
     rhs, lhs, bhs, at,
     recurse, unfold, unfold_, strict, expand, unlet, divide,
-    twice, thrice, many
+    twice, thrice, many, try_
     ) where
 
 import Proof.QED.Advanced() -- so I test all the API's
