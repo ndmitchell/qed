@@ -4,6 +4,7 @@
 module Proof.Exp.Core(
     Var(..), Con(..), Exp(..), Pat(..),
     fromApps, fromLams, fromLets, lets, lams, apps,
+    isVar,
     patCon, patVars,
     caseCon,
     prettys, pretty,
@@ -49,6 +50,8 @@ data Pat
     = PCon Con [Var]
     | PWild
       deriving (Data,Typeable,Show,Eq,Ord)
+
+isVar Var{} = True; isVar _ = False
 
 instance NFData Exp where
     rnf (Var a) = rnf a
