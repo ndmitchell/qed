@@ -2,6 +2,8 @@
 :set -isrc
 :load src/Main.hs src/Paths.hs
 
+:def test const $ return ":main"
+
 :{
 :def prof \x -> return $ unlines
         [":!" ++
