@@ -1,3 +1,13 @@
 :set -fwarn-unused-binds -fwarn-unused-imports
 :set -isrc
 :load src/Main.hs
+
+:{
+:def prof \x -> return $ unlines
+        [":!" ++
+         "(if not exist .hpc mkdir .hpc) && " ++
+         "(if not exist .hpc\\prof mkdir .hpc\\prof) && " ++
+         "ghc -rtsopts -prof -auto-all -caf-all --make -isrc src/Main.hs -w -outputdir .hpc/prof -o .hpc/prof/qed"
+        ,":!.hpc\\prof\\qed +RTS -p"
+        ,":!start qed.prof"]
+:}
