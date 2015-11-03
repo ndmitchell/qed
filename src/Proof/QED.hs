@@ -25,7 +25,10 @@ import Control.Monad
 import Language.Haskell.Exts hiding (Var, Exp, Con, Case, App, Let)
 import Data.Maybe
 import Data.List.Extra
+import System.FilePath
+import System.Directory
 import Data.Generics.Uniplate.Data
+import Paths_qed
 
 type PropString = String
 
@@ -42,7 +45,12 @@ laws act = do
 
 imports :: FilePath -> QED ()
 imports file = do
-    src <- liftIO $ readFile $ "imports/" ++ file ++ ".hs"
+    dataDir <- liftIO getDataDir
+    let poss = [dir </> file <.> ext | dir <- [".",dataDir </> "imports"], ext <- [".hs",""]]
+    files <- liftIO $ filterM doesFileExist poss
+    when (null files) $
+        fail $ unlines $ ("imports: Could not find " ++ file ++ ", tried:") : map ("  "++) poss
+    src <- liftIO $ readFile $ head files
     let mode = defaultParseMode{parseFilename=file}
     let res = deflate $ fromParseResult $ parseFileContentsWithMode mode $ replace "..." "undefined" src
     mapM_ addDecl $ childrenBi res

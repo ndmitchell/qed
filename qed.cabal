@@ -13,7 +13,6 @@ description:
     A prototype proof system.
 homepage:           https://github.com/ndmitchell/qed#readme
 bug-reports:        https://github.com/ndmitchell/qed/issues
-data-dir:           data
 data-files:
     imports/*.hs
 extra-doc-files:
@@ -27,7 +26,7 @@ source-repository head
 
 library
     build-depends:
-        base == 4.*, deepseq,
+        base == 4.*, filepath, directory, deepseq,
         transformers, exceptions,
         uniplate, extra,
         haskell-src-exts
@@ -36,6 +35,7 @@ library
         Proof.QED
         Proof.QED.Advanced
     other-modules:
+        Paths_qed
         Proof.Exp.Core
         Proof.Exp.HSE
         Proof.Exp.Prop
