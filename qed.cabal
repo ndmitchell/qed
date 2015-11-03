@@ -27,7 +27,7 @@ source-repository head
 
 library
     build-depends:
-        base == 4.*, deepseq, mtl,
+        base == 4.*, deepseq,
         transformers, exceptions,
         uniplate, safe, extra,
         haskell-src-exts

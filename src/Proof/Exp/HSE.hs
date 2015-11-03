@@ -6,7 +6,7 @@ module Proof.Exp.HSE(deflate, inflate, sl) where
 import Data.Data
 import Data.List
 import Language.Haskell.Exts
-import Control.Monad.State
+import Control.Monad.Trans.State
 import Data.Generics.Uniplate.Data
 
 

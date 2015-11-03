@@ -15,7 +15,8 @@ module Proof.Exp.Core(
 import Data.Maybe
 import Data.List
 import Data.Data
-import Control.Monad.State
+import Control.Monad
+import Control.Monad.Trans.State
 import Data.Char
 import Control.Arrow
 import Language.Haskell.Exts hiding (Exp,Name,Pat,Var,Let,App,Case,Con,name,parse,Pretty)
