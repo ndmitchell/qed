@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, PatternGuards #-}
 
 -- | Module for operating on haskell-src-exts expressions.
 module Proof.Exp.HSE(deflate, inflate, sl) where
