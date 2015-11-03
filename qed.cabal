@@ -43,10 +43,11 @@ library
         Proof.QED.Type
         Proof.Util
 
-executable test-qed
+test-suite qed-test
+    type: exitcode-stdio-1.0
+    main-is: Main.hs
     build-depends: base
-    hs-source-dirs:     src
-    main-is:            Main.hs
+    hs-source-dirs: src
 
     other-modules:
         Classes
