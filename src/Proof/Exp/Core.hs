@@ -25,6 +25,8 @@ import Proof.Exp.HSE
 import Control.DeepSeq
 import Proof.Util hiding (fresh)
 import Data.Generics.Uniplate.Data
+import Control.Applicative
+import Prelude
 
 
 ---------------------------------------------------------------------

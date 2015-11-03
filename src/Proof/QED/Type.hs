@@ -24,6 +24,8 @@ import Data.Typeable
 import Proof.Util
 import Proof.Exp.Core
 import Proof.Exp.Prop
+import Control.Applicative
+import Prelude
 
 newtype Laws = Laws [Prop]
     deriving Monoid

@@ -29,6 +29,8 @@ import System.FilePath
 import System.Directory
 import Data.Generics.Uniplate.Data
 import Paths_qed
+import Control.Applicative hiding (many)
+import Prelude
 
 type PropString = String
 

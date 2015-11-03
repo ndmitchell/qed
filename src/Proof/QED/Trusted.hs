@@ -14,6 +14,8 @@ import Proof.QED.Type
 import Control.Monad
 import Data.Maybe
 import Data.Generics.Uniplate.Data
+import Control.Applicative
+import Prelude
 
 
 -- | Use a new prop which is the same as the previous goal, but with any number of unfoldings
