@@ -1,10 +1,9 @@
 {-# LANGUAGE PatternGuards #-}
 
 -- | Generic utilities.
-module Proof.Util(module Proof.Util, headNote) where
+module Proof.Util(module Proof.Util) where
 
 import System.IO.Unsafe
-import Safe
 import System.Environment
 import Control.DeepSeq
 
@@ -14,6 +13,8 @@ rnf3 a b c = rnf a `seq` rnf b `seq` rnf c
 rnf4 a b c d = rnf a `seq` rnf b `seq` rnf c `seq` rnf d
 rnf5 a b c d e = rnf a `seq` rnf b `seq` rnf c `seq` rnf d `seq` rnf e
 
+headNote note (x:xs) = x
+headNote note [] = error $ "headNote on [], " ++ note
 
 fast = "--fast" `elem` unsafePerformIO getArgs
 
