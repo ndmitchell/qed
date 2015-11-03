@@ -1,4 +1,4 @@
-# proofy
+# qed
 
 Experiments writing a prover
 
