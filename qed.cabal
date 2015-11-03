@@ -33,7 +33,7 @@ library
     hs-source-dirs:     src
     exposed-modules:
         Proof.QED
-        Proof.QED.Advanced
+        Proof.QED.Internal
     other-modules:
         Paths_qed
         Proof.Exp.Core

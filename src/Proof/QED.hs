@@ -12,7 +12,7 @@ module Proof.QED(
     qedCheat, unsafeCheat
     ) where
 
-import Proof.QED.Advanced() -- so I test all the API's
+import Proof.QED.Internal() -- so I test all the API's
 
 import Proof.QED.Type
 import Proof.QED.Trusted

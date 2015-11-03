@@ -1,5 +1,5 @@
 
-module Proof.QED.Advanced(
+module Proof.QED.Internal(
     Known(..), getKnown,
     Unknown(..), getUnknown,
     Goal(..), getGoal,
