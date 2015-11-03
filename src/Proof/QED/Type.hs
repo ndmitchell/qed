@@ -25,6 +25,7 @@ import Proof.Util
 import Proof.Exp.Core
 import Proof.Exp.Prop
 import Control.Applicative
+import Data.Monoid
 import Prelude
 
 newtype Laws = Laws [Prop]
