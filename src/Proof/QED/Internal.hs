@@ -1,5 +1,8 @@
 
 module Proof.QED.Internal(
+    Exp(..), Pat(..), Var(..), Con(..),
+    Prop(..),
+    Side(..),
     Known(..), getKnown,
     Unknown(..), getUnknown,
     Goal(..), getGoal,
@@ -8,5 +11,7 @@ module Proof.QED.Internal(
     module Proof.QED.Trusted
     ) where
 
+import Proof.Exp.Core
+import Proof.Exp.Prop
 import Proof.QED.Type
 import Proof.QED.Trusted
