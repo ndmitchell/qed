@@ -1,0 +1,53 @@
+cabal-version:      >= 1.6
+build-type:         Simple
+name:               qed
+version:            0.0
+license:            BSD3
+license-file:       LICENSE
+category:           Theorem Provers
+author:             Neil Mitchell <ndmitchell@gmail.com>
+maintainer:         Neil Mitchell <ndmitchell@gmail.com>
+copyright:          Neil Mitchell 2015
+synopsis:           Simple prover
+description:
+    A prototype proof system.
+homepage:           https://github.com/ndmitchell/qed#readme
+bug-reports:        https://github.com/ndmitchell/qed/issues
+data-dir:           data
+data-files:
+    imports/*.hs
+extra-doc-files:
+    README.md
+    CHANGES.txt
+tested-with:        GHC==7.10.1, GHC==7.8.4
+
+source-repository head
+    type:     git
+    location: https://github.com/ndmitchell/qed.git
+
+library
+    build-depends:
+        base == 4.*, deepseq, mtl,
+        transformers, exceptions,
+        uniplate, safe, extra,
+        haskell-src-exts
+    hs-source-dirs:     src
+    exposed-modules:
+        Proof.QED
+        Proof.QED.Advanced
+    other-modules:
+        Proof.Exp.Core
+        Proof.Exp.HSE
+        Proof.Exp.Prop
+        Proof.QED.Trusted
+        Proof.QED.Type
+        Proof.Util
+
+executable test-qed
+    build-depends: base
+    hs-source-dirs:     src
+    main-is:            Main.hs
+
+    other-modules:
+        Classes
+        HLint
