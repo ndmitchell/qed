@@ -2,10 +2,21 @@
 module HLint(hlint) where
 
 import Proof.QED
-import Control.Monad
 import Control.Monad.IO.Class
 
 hlint = do
+    decl "data Nat = S Nat | Z"
+    decl "data Int = Neg Nat | Zero | Pos Nat"
+
+    skip $ prove "n x => take n (repeat x) = replicate n x" $ do
+        unfold "replicate"
+
+    skip $ prove "n x => head (drop n x) = x !! n" $ do
+        unfold "head"
+        unfold "error"
+        recurse
+
+
     prove "f => (($) . f) = f" $ do
         unfold "$"
         unfold "."
@@ -33,7 +44,7 @@ hlint = do
     prove "x y => (if x then False else y) = not x && y" $ do
         many unfold_
 
-    when False $ prove "map fromJust . filter isJust = catMaybes" $ do
+    skip $ prove "map fromJust . filter isJust = catMaybes" $ do
         unfold "map"
         unfold "catMaybes"
         unfold "concatMap"
@@ -81,7 +92,7 @@ hlint = do
         unfold "mapMaybe"
         unfold "."
 
-    when False $ prove "concatMap maybeToList = catMaybes" $ do
+    skip $ prove "concatMap maybeToList = catMaybes" $ do
         unfold "catMaybes"
         liftIO $ print "here1"
         expand
@@ -89,11 +100,11 @@ hlint = do
         twice divide
         unfold "maybeToList"
 
-    when False $ prove "f g x => concatMap f (map g x) = concatMap (f . g) x" $ do
+    skip $ prove "f g x => concatMap f (map g x) = concatMap (f . g) x" $ do
         twice $ unfold "concatMap"
         twice $ unfold "concat"
 
-    when False $ prove "x => head (reverse x) = last x" $ do
+    skip $ prove "x => head (reverse x) = last x" $ do
         unfold "head"
         unfold "reverse"
         recurse

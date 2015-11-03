@@ -91,21 +91,41 @@ classes = do
         unfold "ap"
         unfold "liftM2"
         unfold "$"
+        unsafeCheat "need laws"
 
-    prove "u v w => return (.) `ap` u `ap` v `ap` w = u `ap` (v `ap` w)" $ do
+{-
+-- (>>=) (return id) (\ b -> (>>=) a (\ c -> return (b c)))    =    a
+--       return a >>= k = k a"
+-- (>>=) a (\ c -> return c))    =    a
+-- a    =    a
+
+data Monad a = Return a | forall x . Bind (Monad x) (x -> Monad a)
+
+eval (Return a) = a
+eval (Bind (Return a) f) = f a
+eval 
+
+-}
+
+    skip $ prove "u v w => return (.) `ap` u `ap` v `ap` w = u `ap` (v `ap` w)" $ do
+        replicateM_ 100 unfold_
+
+    skip $ prove "f x => return f `ap` return x = return (f x)" $ do
+        unfold "ap"
+        unfold "liftM2"
+        unfold "$"
+        unlet
         return ()
 
-    prove  "f x => return f `ap` return x = return (f x)" $ do
-        return ()
+    skip $ do
+        prove "u y => u `ap` return y = return ($ y) `ap` u" $ do
+            return ()
 
-    prove "u y => u `ap` return y = return ($ y) `ap` u" $ do
-        return ()
+        lawsMonad <- laws $ do
+            law "a k => return a >>= k = k a"
+            law "m => m >>= return = m"
+            law "m k h => m >>= (\\x -> k x >>= h) = (m >>= k) >>= h"
 
-    lawsMonad <- laws $ do
-        law "a k => return a >>= k = k a"
-        law "m => m >>= return = m"
-        law "m k h => m >>= (\\x -> k x >>= h) = (m >>= k) >>= h"
-
-    satisfy "Applicative Monad" lawsApplicative $ do
-        bind "pure = return"
-        bind "(<*>) = ap"
+        satisfy "Applicative Monad" lawsApplicative $ do
+            bind "pure = return"
+            bind "(<*>) = ap"
