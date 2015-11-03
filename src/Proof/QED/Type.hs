@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, BangPatterns, TupleSections, PatternGuards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, BangPatterns, TupleSections, PatternGuards #-}
 
 module Proof.QED.Type(
     Known(..), Unknown(..), Goal(..), Side(..),
