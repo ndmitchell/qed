@@ -46,8 +46,8 @@ library
 test-suite qed-test
     type: exitcode-stdio-1.0
     main-is: Main.hs
-    build-depends: base
-    hs-source-dirs: src
+    build-depends: base, qed, transformers
+    hs-source-dirs: test
 
     other-modules:
         Classes
