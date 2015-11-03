@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, ScopedTypeVariables, RecordWildCards, TupleSections #-}
+{-# LANGUAGE ViewPatterns, ScopedTypeVariables, RecordWildCards, TupleSections, PatternGuards #-}
 
 module Proof.QED(
     QED, qed,
