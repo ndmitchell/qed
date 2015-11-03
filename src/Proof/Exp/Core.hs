@@ -11,7 +11,6 @@ module Proof.Exp.Core(
     simplifyExp
     ) where
 
-
 import Data.Maybe
 import Data.List
 import Data.Data
