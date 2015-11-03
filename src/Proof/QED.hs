@@ -151,7 +151,7 @@ apply run test = do
     let poss = (if focusSide /= Just RHS then map (,\lhs -> Prop vs lhs rhs) $ contexts lhs else []) ++
                (if focusSide /= Just LHS then map (,\rhs -> Prop vs lhs rhs) $ contexts rhs else [])
     let xs = [gen2 $ gen x | ((test known -> Just x, gen),gen2) <- poss]
-    case drop (focusAt - 1) xs of
+    case drop focusAt xs of
         [] -> badProof "Cannot apply, no suitable elements at index"
         x:_ -> run x >> auto
 
