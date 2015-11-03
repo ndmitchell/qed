@@ -8,6 +8,8 @@ import Data.List
 import Language.Haskell.Exts
 import Control.Monad.Trans.State
 import Data.Generics.Uniplate.Data
+import Control.Applicative
+import Prelude
 
 
 -- Turn on to have better list comp desugaring in terms of mapMaybe for common cases
